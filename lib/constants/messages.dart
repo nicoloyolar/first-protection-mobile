@@ -8,7 +8,7 @@ class Messages {
   static const String loginTitle          = "Iniciar Sesión";
   static const String usernameHint        = "Usuario";
   static const String passwordHint        = "Contraseña";
-  static const String loginButton         = "Ingresar";
+  static const String loginButton         = "INGRESAR";
   static const String forgotPassword      = "¿Olvidaste tu contraseña?";
   static const String state               = "Estado";
   static const String home                = "Inicio";

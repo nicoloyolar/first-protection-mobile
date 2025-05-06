@@ -33,62 +33,95 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFD32C2C), 
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/images/logo-first-protection.jpeg', 
-                height: 100, 
-              ),
-              SizedBox(height: 20),
-              TextField(
-                controller: _usernameController,
-                decoration: InputDecoration(
-                  labelText: Messages.usernameHint,
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                ),
-              ),
-              SizedBox(height: 10),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: Messages.passwordHint,
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
-                ),
-              ),
-              SizedBox(height: 20),
-              _isLoading
-                  ? CircularProgressIndicator() 
-                  : ElevatedButton(
-                      onPressed: _login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white, 
-                        foregroundColor: Colors.red,
-                        padding: EdgeInsets.symmetric(horizontal: 40, vertical: 20), 
-                        textStyle: TextStyle(
-                          fontSize: 18, 
-                          fontWeight: FontWeight.bold, 
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10), 
+      body: Stack(
+        fit: StackFit.expand, 
+        children: [
+          Image.asset(
+            'assets/images/carbonfiber.jpg', 
+            fit: BoxFit.cover,
+          ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/images/logo-first-protection.jpeg',
+                    height: 200,
+                  ),
+                  SizedBox(height: 20),
+                  TextField(
+                    controller: _usernameController,
+                    decoration: InputDecoration(
+                      hintText: "Usuario", 
+                      hintStyle: TextStyle(
+                        color: Color(0xFFFF6C2C), 
+                      ),
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      border: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Colors.white, 
+                          width: 2.0,
                         ),
                       ),
-                      child: Text(Messages.loginButton),
+                      prefixIcon: Icon(Icons.person, color: Color(0xFFFF6C2C)),
                     ),
-            ],
+                    style: TextStyle(
+                      color: Colors.white, 
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      hintText: "Contraseña", 
+                      hintStyle: TextStyle(
+                        color: Color(0xFFFF6C2C), 
+                      ),
+                      filled: true,
+                      fillColor: Colors.transparent, 
+                      border: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Colors.white, 
+                          width: 2.0,
+                        ),
+                      ),
+                      prefixIcon: Icon(Icons.lock, color: Color(0xFFFF6C2C)),
+                    ),
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  _isLoading
+                      ? CircularProgressIndicator()
+                      : SizedBox(
+                          width: double.infinity, 
+                          child: ElevatedButton(
+                            onPressed: _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFFFF6C2C), 
+                              foregroundColor: Colors.black, 
+                              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                              textStyle: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(50),
+                              ),
+                            ),
+                            child: Text(Messages.loginButton),
+                          ),
+                        ),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

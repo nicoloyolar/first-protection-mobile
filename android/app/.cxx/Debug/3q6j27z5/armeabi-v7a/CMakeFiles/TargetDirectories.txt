@@ -1,0 +1,2 @@
+C:/Users/FULLUNLOCK/AndroidStudioProjects/first_protection/android/app/.cxx/Debug/3q6j27z5/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/FULLUNLOCK/AndroidStudioProjects/first_protection/android/app/.cxx/Debug/3q6j27z5/armeabi-v7a/CMakeFiles/rebuild_cache.dir

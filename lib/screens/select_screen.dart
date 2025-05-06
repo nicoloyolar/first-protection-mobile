@@ -1,7 +1,6 @@
 // ignore_for_file: library_private_types_in_public_api
 
 import 'package:flutter/material.dart';
-import 'package:first_protection/constants/messages.dart';
 
 class AdminDeviceSelectionScreen extends StatefulWidget {
   const AdminDeviceSelectionScreen({super.key});
@@ -13,10 +12,10 @@ class AdminDeviceSelectionScreen extends StatefulWidget {
 
 class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen> {
   final List<Map<String, String>> devices = [
-    {"patente": "CD-FG-34 - Kia Morning", "estado": "Activo"},
-    {"patente": "BD-DF-78 - Audi A3", "estado": "Inactivo"},
-    {"patente": "EF-BD-31 - Kia Cerato", "estado": "Activo"},
-    {"patente": "GB-DB-21 - Hyundai Accent", "estado": "Inactivo"},
+    {"patente": "CDFG-34 - Kia Morning", "estado": "Activo"},
+    {"patente": "BDDF-78 - Audi A3", "estado": "Inactivo"},
+    {"patente": "EFBD-31 - Kia Cerato", "estado": "Activo"},
+    {"patente": "GBDB-21 - Hyundai Accent", "estado": "Inactivo"},
   ];
 
   Widget _buildStatusIndicator(String status) {
@@ -35,15 +34,15 @@ class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(Messages.appName, style: TextStyle(color: Colors.white)),
-        backgroundColor: Color(0xFFD32C2C),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.person_add, color: Colors.white),
-            onPressed: () {
-              Navigator.pushNamed(context, '/userRegistration');
-            },
+        backgroundColor: Color(0xFF333333),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),  
+          child: Image.asset(
+            'assets/images/banner-first-protection.png', 
+            height: 150,
           ),
+        ),
+        actions: [
           IconButton(
             icon: Icon(Icons.logout, color: Colors.white),
             onPressed: () {
@@ -52,6 +51,7 @@ class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen>
           ),
         ],
       ),
+      backgroundColor: Color(0xFFCCCCCC), 
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView.builder(
@@ -82,6 +82,21 @@ class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen>
           },
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+        },
+        backgroundColor: Colors.red,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30), 
+        ),
+        elevation: 10,
+        child: Icon(
+          Icons.add, 
+          color: Colors.white, 
+          size: 40, 
+        ), 
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat, 
     );
   }
 }
