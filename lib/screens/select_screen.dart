@@ -1,6 +1,7 @@
 // ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:first_protection/screens/dashboard_screen.dart';
 import 'package:first_protection/widgets/custom_vehicle_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -138,7 +139,16 @@ class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen>
                     ),
                     trailing: const Icon(Icons.arrow_forward_ios, color: Colors.red),
                     onTap: () {
-                      Navigator.pushReplacementNamed(context, '/dashboard');
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DashboardScreen(
+                            patente: vehicle['patente'],
+                            estado: vehicle['estado'],
+                            idVehiculo: vehicle.id,
+                          ),
+                        ),
+                      );
                     },
                   ),
                 );

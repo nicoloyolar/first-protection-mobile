@@ -1,14 +1,12 @@
 import 'package:first_protection/screens/register_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; 
-import 'package:first_protection/screens/dashboard_screen.dart';
 import 'package:first_protection/screens/login_screen.dart';
 import 'package:first_protection/screens/select_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  debugPrint('✅ Firebase inicializado correctamente');
   runApp(const MyApp());
 }
 
@@ -22,7 +20,6 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const LoginScreen(),      
-        '/dashboard': (context) => const DashboardScreen(),
         '/select': (context) => const AdminDeviceSelectionScreen(),
         '/signup': (context) => const SignupScreen(),
       },

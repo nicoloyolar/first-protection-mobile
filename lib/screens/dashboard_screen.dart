@@ -6,33 +6,64 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final String patente;
+  final String estado;
+  final String idVehiculo;
+
+  const DashboardScreen({
+    super.key,
+    required this.patente,
+    required this.estado,
+    required this.idVehiculo,
+  });
 
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
   final LatLng _carLocation = LatLng(-36.8260, -73.0498);
   bool _isAlarmActive = false;
+
+  late final AnimationController _animationController;
+  late final Animation<double> _fadeAnimation;
 
   DateTime? _alertStartTime;
   Timer? _timer;
   Duration _elapsedTime = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _animationController.dispose();
+    super.dispose();
+  }
 
   void _showLogoutConfirmation() {
     showDialog(
       context: context,
       builder: (_) => CustomAlert(
         message: "¿Estás seguro que deseas cerrar sesión?",
-        onCancel: () {
-          Navigator.of(context).pop(); 
-        },
+        onCancel: () => Navigator.of(context).pop(),
         onConfirm: () {
-          Navigator.of(context).pop(); 
+          Navigator.of(context).pop();
           Navigator.pushReplacementNamed(context, '/');
         },
-        showCancelButton: true, 
+        showCancelButton: true,
       ),
     );
   }
@@ -64,10 +95,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String message = '';
     IconData icon = Icons.warning_amber_rounded;
     Color iconColor = const Color(0xFFFF6C2C);
-    
+
     switch (buttonPressed) {
       case 'A':
-        message = '¡Humo activado! El sistema ha comenzado la disuación.';
+        message = '¡Humo activado! El sistema ha comenzado la disuasión.';
         icon = Icons.smoke_free;
         iconColor = Colors.blue;
         break;
@@ -85,21 +116,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     showDialog(
       context: context,
-      builder: (context) {
-        return CustomAlert(
-          message: message,
-          icon: icon,
-          iconColor: iconColor,
-          onConfirm: () => Navigator.of(context).pop(),
-        );
-      },
+      builder: (_) => CustomAlert(
+        message: message,
+        icon: icon,
+        iconColor: iconColor,
+        onConfirm: () => Navigator.of(context).pop(),
+      ),
     );
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
   }
 
   @override
@@ -110,14 +133,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: const Color(0xFF333333),
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Image.asset(
-            'assets/images/banner-first-protection.png',
-            height: 150,
-          ),
+          child: Image.asset('assets/images/banner-first-protection.png', height: 150),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: _showLogoutConfirmation,
           ),
         ],
@@ -139,6 +159,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Vehículo: ${widget.patente}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Estado: ${widget.estado}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: widget.estado == "Activo" ? Colors.green : Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               Center(
                 child: Container(
                   width: MediaQuery.of(context).size.width * 0.9,
@@ -179,12 +231,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Center(child: _buildRoundedButton("Llamar a Usuario")),
               const SizedBox(height: 20),
               Row(
-                mainAxisAlignment: MainAxisAlignment.center, 
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildSquareButton("A", 'assets/images/btn-humo-activado.png'),
-                  const SizedBox(width: 8), 
+                  const SizedBox(width: 8),
                   _buildSquareButton("B", 'assets/images/btn-cortacorriente-activado.png'),
-                  const SizedBox(width: 8), 
+                  const SizedBox(width: 8),
                   _buildSquareButton("C", 'assets/images/btn-audio-activado.png'),
                 ],
               ),
@@ -226,7 +278,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildSquareButton(String label, String imageAsset) {
     return ElevatedButton(
       onPressed: () {
-        _showCustomAlert(label);  // Aquí llamamos al alert cuando el botón es presionado
+        _showCustomAlert(label);
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.grey[800],
@@ -237,7 +289,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       child: Image.asset(
-        imageAsset,  
+        imageAsset,
         fit: BoxFit.contain,
       ),
     );
