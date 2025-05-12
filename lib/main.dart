@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart'; 
 import 'package:first_protection/screens/dashboard_screen.dart';
 import 'package:first_protection/screens/login_screen.dart';
 import 'package:first_protection/screens/select_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  runApp(MyApp());
+  await Firebase.initializeApp();
+  debugPrint('✅ Firebase inicializado correctamente');
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -18,9 +20,9 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       routes: {
-        '/'                 : (context) => LoginScreen(),
-        '/dashboard'        : (context) => DashboardScreen(),
-        '/select'           : (context) => AdminDeviceSelectionScreen(),
+        '/': (context) => const LoginScreen(),      
+        '/dashboard': (context) => const DashboardScreen(),
+        '/select': (context) => const AdminDeviceSelectionScreen(),
       },
     );
   }

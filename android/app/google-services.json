@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "508596165428",
+    "project_id": "first-protection",
+    "storage_bucket": "first-protection.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:508596165428:android:9c0e7ec6e7488c93cda361",
+        "android_client_info": {
+          "package_name": "cl.firstprotection.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-1djkmEwwVVKO5OChrqRpS5Ed6Rb6P8A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
