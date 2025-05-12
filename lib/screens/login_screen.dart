@@ -3,6 +3,7 @@
 import 'package:first_protection/constants/messages.dart';
 import 'package:first_protection/widgets/custom_alert_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,19 +16,21 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _obscurePassword = true; 
+  bool _obscurePassword = true;
+
+  final FirebaseAuth _auth = FirebaseAuth.instance; 
 
   void _showCustomAlert(String message) {
     showDialog(
       context: context,
       builder: (_) => CustomAlert(
         message: message,
-        showCancelButton: false, 
+        showCancelButton: false,
       ),
     );
   }
 
-  void _login() {
+  Future<void> _login() async {
     final user = _usernameController.text.trim();
     final pass = _passwordController.text;
 
@@ -36,21 +39,33 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    if (user != 'admin' || pass != 'admin') {
-      _showCustomAlert("Usuario o contraseña incorrectos.");
-      return;
-    }
-
     setState(() {
       _isLoading = true;
     });
 
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: user,
+        password: pass,
+      );
+
+      Navigator.pushReplacementNamed(context, '/select');
+
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        _showCustomAlert('Usuario no encontrado.');
+      } else if (e.code == 'wrong-password') {
+        _showCustomAlert('Contraseña incorrecta.');
+      } else {
+        _showCustomAlert('Error: ${e.message}');
+      }
+    } catch (e) {
+      _showCustomAlert('Error inesperado: $e');
+    } finally {
       setState(() {
         _isLoading = false;
       });
-      Navigator.pushReplacementNamed(context, '/select');
-    });
+    }
   }
 
   InputDecoration _inputDecoration({required String hintText, required IconData icon, Widget? suffixIcon}) {
@@ -99,7 +114,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     child: TextField(
                       controller: _usernameController,
-                      decoration: _inputDecoration(hintText: "Usuario", icon: Icons.person),
+                      decoration: _inputDecoration(hintText: "Correo electrónico", icon: Icons.person),
+                      keyboardType: TextInputType.emailAddress,
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
