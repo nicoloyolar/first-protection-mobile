@@ -1,24 +1,25 @@
 // ignore_for_file: use_build_context_synchronously, library_private_types_in_public_api
 
-import 'package:first_protection/constants/messages.dart';
 import 'package:first_protection/widgets/custom_alert_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  _SignupScreenState createState() => _SignupScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
+class _SignupScreenState extends State<SignupScreen> {
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance; 
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   void _showCustomAlert(String message) {
     showDialog(
@@ -30,11 +31,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _login() async {
-    final user = _usernameController.text.trim();
-    final pass = _passwordController.text;
+  Future<void> _signup() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
 
-    if (user.isEmpty || pass.isEmpty) {
+    if (email.isEmpty || password.isEmpty) {
       _showCustomAlert("Debes completar todos los campos.");
       return;
     }
@@ -44,18 +45,24 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await _auth.signInWithEmailAndPassword(
-        email: user,
-        password: pass,
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
       );
+
+      await _firestore.collection('usuarios').doc(userCredential.user!.uid).set({
+        'email': email,
+        'rol': 'admin', 
+        'vehiculos': [],
+      });
 
       Navigator.pushReplacementNamed(context, '/select');
 
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found') {
-        _showCustomAlert('Usuario no encontrado.');
-      } else if (e.code == 'wrong-password') {
-        _showCustomAlert('Contraseña incorrecta.');
+      if (e.code == 'email-already-in-use') {
+        _showCustomAlert('El correo ya está registrado.');
+      } else if (e.code == 'weak-password') {
+        _showCustomAlert('La contraseña es demasiado débil.');
       } else {
         _showCustomAlert('Error: ${e.message}');
       }
@@ -113,8 +120,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     child: TextField(
-                      controller: _usernameController,
-                      decoration: _inputDecoration(hintText: "Correo electrónico", icon: Icons.person),
+                      controller: _emailController,
+                      decoration: _inputDecoration(hintText: "Correo electrónico", icon: Icons.email),
                       keyboardType: TextInputType.emailAddress,
                       style: const TextStyle(color: Colors.white),
                     ),
@@ -153,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       : SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: _login,
+                            onPressed: _signup,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFF6C2C),
                               foregroundColor: Colors.black,
@@ -163,18 +170,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                 borderRadius: BorderRadius.circular(50),
                               ),
                             ),
-                            child: Text(Messages.loginButton),
+                            child: const Text('Registrar cuenta'),
                           ),
                         ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/signup');
-                        },
-                        child: const Text(
-                          "¿No tienes cuenta? Crear nueva cuenta",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Text(
+                      "¿Ya tienes cuenta? Iniciar sesión",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ],
               ),
             ),

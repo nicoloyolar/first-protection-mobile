@@ -1,3 +1,4 @@
+import 'package:first_protection/screens/register_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; 
 import 'package:first_protection/screens/dashboard_screen.dart';
@@ -23,6 +24,7 @@ class MyApp extends StatelessWidget {
         '/': (context) => const LoginScreen(),      
         '/dashboard': (context) => const DashboardScreen(),
         '/select': (context) => const AdminDeviceSelectionScreen(),
+        '/signup': (context) => const SignupScreen(),
       },
     );
   }

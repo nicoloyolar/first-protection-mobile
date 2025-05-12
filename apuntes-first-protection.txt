@@ -6,4 +6,6 @@ ADMINISTRADOR
 
 TO DO LIST
 
-    - integrar imagen del vehículo cargada por el usuario
+    - integrar registro de usuarios ✅
+    - integrar registro de dispositivos (vehículos) ✅
+    - desarrollar pantalla con rol de usuario
