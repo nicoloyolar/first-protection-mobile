@@ -1,9 +1,9 @@
 // ignore_for_file: library_private_types_in_public_api
 
 import 'dart:async';
+import 'package:first_protection/widgets/custom_alert_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:first_protection/widgets/bottom_navigation_menu.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -13,17 +13,32 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final LatLng _carLocation = LatLng(-33.4489, -70.6693);
+  final LatLng _carLocation = LatLng(-36.8260, -73.0498);
   bool _isAlarmActive = false;
-  int _currentIndex = 0;
 
   DateTime? _alertStartTime;
   Timer? _timer;
   Duration _elapsedTime = Duration.zero;
 
+  void _showLogoutConfirmation() {
+    showDialog(
+      context: context,
+      builder: (_) => CustomAlert(
+        message: "¿Estás seguro que deseas cerrar sesión?",
+        onCancel: () {
+          Navigator.of(context).pop(); 
+        },
+        onConfirm: () {
+          Navigator.of(context).pop(); 
+          Navigator.pushReplacementNamed(context, '/');
+        },
+        showCancelButton: true, 
+      ),
+    );
+  }
+
   void _onMapCreated(GoogleMapController controller) {
-    setState(() {
-    });
+    setState(() {});
   }
 
   void _toggleAlarm() {
@@ -45,22 +60,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-
-    switch (index) {
-      case 0:
-        Navigator.pushReplacementNamed(context, '/dashboard');
+  void _showCustomAlert(String buttonPressed) {
+    String message = '';
+    IconData icon = Icons.warning_amber_rounded;
+    Color iconColor = const Color(0xFFFF6C2C);
+    
+    switch (buttonPressed) {
+      case 'A':
+        message = '¡Humo activado! El sistema ha comenzado la disuación.';
+        icon = Icons.smoke_free;
+        iconColor = Colors.blue;
         break;
-      case 1:
-        Navigator.pushReplacementNamed(context, '/history');
+      case 'B':
+        message = 'Corte de corriente activado. Se ha interrumpido el suministro.';
+        icon = Icons.power_off;
+        iconColor = Colors.red;
         break;
-      case 2:
-        Navigator.pushReplacementNamed(context, '/settings');
+      case 'C':
+        message = '¡Alarma sonora activada! El sistema está emitiendo una alerta.';
+        icon = Icons.volume_up;
+        iconColor = Colors.green;
         break;
     }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return CustomAlert(
+          message: message,
+          icon: icon,
+          iconColor: iconColor,
+          onConfirm: () => Navigator.of(context).pop(),
+        );
+      },
+    );
   }
 
   @override
@@ -84,10 +117,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/');
-            },
+            icon: Icon(Icons.logout, color: Colors.white),
+            onPressed: _showLogoutConfirmation,
           ),
         ],
       ),
@@ -150,11 +181,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center, 
                 children: [
-                  _buildSquareButton("A"),
+                  _buildSquareButton("A", 'assets/images/btn-humo-activado.png'),
                   const SizedBox(width: 8), 
-                  _buildSquareButton("B"),
+                  _buildSquareButton("B", 'assets/images/btn-cortacorriente-activado.png'),
                   const SizedBox(width: 8), 
-                  _buildSquareButton("C"),
+                  _buildSquareButton("C", 'assets/images/btn-audio-activado.png'),
                 ],
               ),
               const SizedBox(height: 20),
@@ -174,10 +205,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: CustomBottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onItemTapped,
-      ),
     );
   }
 
@@ -196,9 +223,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSquareButton(String label) {
+  Widget _buildSquareButton(String label, String imageAsset) {
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: () {
+        _showCustomAlert(label);  // Aquí llamamos al alert cuando el botón es presionado
+      },
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.grey[800],
         foregroundColor: Colors.white,
@@ -207,7 +236,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           borderRadius: BorderRadius.circular(12),
         ),
       ),
-      child: Text(label),
+      child: Image.asset(
+        imageAsset,  
+        fit: BoxFit.contain,
+      ),
     );
   }
 }

@@ -1,0 +1,2 @@
+C:/Users/FULLUNLOCK/AndroidStudioProjects/first_protection/android/app/.cxx/RelWithDebInfo/2l2b3r6a/x86_64/CMakeFiles/edit_cache.dir
+C:/Users/FULLUNLOCK/AndroidStudioProjects/first_protection/android/app/.cxx/RelWithDebInfo/2l2b3r6a/x86_64/CMakeFiles/rebuild_cache.dir

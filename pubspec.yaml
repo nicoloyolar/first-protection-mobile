@@ -17,10 +17,17 @@ dependencies:
   google_maps_flutter: ^2.1.1
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^5.0.0
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/images/logo-first-protection.jpeg" 
 
 flutter:
 
@@ -30,3 +37,6 @@ flutter:
      - assets/images/logo-first-protection.jpeg
      - assets/images/carbonfiber.jpg
      - assets/images/banner-first-protection.png
+     - assets/images/btn-humo-activado.png
+     - assets/images/btn-cortacorriente-activado.png
+     - assets/images/btn-audio-activado.png

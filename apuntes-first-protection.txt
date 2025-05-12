@@ -1,12 +1,8 @@
+ADMINISTRADOR
 
-- consideraciones de humo no tóxico
-- sirena suficientemente fuerte
-- se deben enviar las coordenadas del usuario que pulsó el botón
-- se debe recibir una notificación en la aplicación de los usuarios que estarán a cargo
-- la interfaz de usuario debe mostrar un mapa con la ubicación y un mensaje de alerta 
-- se deben tener en consideración que se cumpla con las regulaciones locales
-- integración futura con autoridades
-- activar cámara de seguridad
+    - Monitorear, controlar y responder ante incidentes o alertas
+    - Puede ser el dueño del vehículo o alguien en una central de asistencia
+
 
 TO DO LIST
 

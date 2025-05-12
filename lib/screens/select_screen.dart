@@ -1,6 +1,7 @@
 // ignore_for_file: library_private_types_in_public_api
 
 import 'package:flutter/material.dart';
+import 'package:first_protection/widgets/custom_alert_dialog.dart';
 
 class AdminDeviceSelectionScreen extends StatefulWidget {
   const AdminDeviceSelectionScreen({super.key});
@@ -17,6 +18,23 @@ class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen>
     {"patente": "EFBD-31 - Kia Cerato", "estado": "Activo"},
     {"patente": "GBDB-21 - Hyundai Accent", "estado": "Inactivo"},
   ];
+
+  void _showLogoutConfirmation() {
+    showDialog(
+      context: context,
+      builder: (_) => CustomAlert(
+        message: "¿Estás seguro que deseas cerrar sesión?",
+        onCancel: () {
+          Navigator.of(context).pop(); 
+        },
+        onConfirm: () {
+          Navigator.of(context).pop(); 
+          Navigator.pushReplacementNamed(context, '/');
+        },
+        showCancelButton: true, 
+      ),
+    );
+  }
 
   Widget _buildStatusIndicator(String status) {
     Color color = status == "Activo" ? Colors.green : Colors.red;
@@ -36,22 +54,20 @@ class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen>
       appBar: AppBar(
         backgroundColor: Color(0xFF333333),
         leading: Padding(
-          padding: const EdgeInsets.all(8.0),  
+          padding: const EdgeInsets.all(8.0),
           child: Image.asset(
-            'assets/images/banner-first-protection.png', 
+            'assets/images/banner-first-protection.png',
             height: 150,
           ),
         ),
         actions: [
           IconButton(
             icon: Icon(Icons.logout, color: Colors.white),
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/');
-            },
+            onPressed: _showLogoutConfirmation,
           ),
         ],
       ),
-      backgroundColor: Color(0xFFCCCCCC), 
+      backgroundColor: Color(0xFFCCCCCC),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView.builder(
@@ -68,8 +84,8 @@ class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen>
                 ),
                 subtitle: Row(
                   children: [
-                    _buildStatusIndicator(device["estado"]!), 
-                    SizedBox(width: 8), 
+                    _buildStatusIndicator(device["estado"]!),
+                    SizedBox(width: 8),
                     Text('${device["estado"]}'),
                   ],
                 ),
@@ -83,20 +99,19 @@ class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-        },
+        onPressed: () {},
         backgroundColor: Colors.red,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30), 
+          borderRadius: BorderRadius.circular(30),
         ),
         elevation: 10,
         child: Icon(
-          Icons.add, 
-          color: Colors.white, 
-          size: 40, 
-        ), 
+          Icons.add,
+          color: Colors.white,
+          size: 40,
+        ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat, 
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }
