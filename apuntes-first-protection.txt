@@ -6,6 +6,4 @@ ADMINISTRADOR
 
 TO DO LIST
 
-    - integrar registro de usuarios ✅
-    - integrar registro de dispositivos (vehículos) ✅
     - desarrollar pantalla con rol de usuario
