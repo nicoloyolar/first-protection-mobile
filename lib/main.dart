@@ -1,3 +1,4 @@
+import 'package:first_protection/screens/splash_screen.dart';
 import 'package:first_protection/screens/register_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; 
@@ -19,7 +20,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       routes: {
-        '/': (context) => const LoginScreen(),      
+        '/': (context) => const SplashScreen(),       
+        '/login': (context) => const LoginScreen(),   
         '/select': (context) => const AdminDeviceSelectionScreen(),
         '/signup': (context) => const SignupScreen(),
       },

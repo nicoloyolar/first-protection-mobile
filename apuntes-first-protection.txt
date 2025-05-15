@@ -7,3 +7,6 @@ ADMINISTRADOR
 TO DO LIST
 
     - desarrollar pantalla con rol de usuario
+    - considerar idioma español para correo de recuperación de contraseñas
+    - guardar la sesión del usuario para que no tenga que iniciar sesión cada vez que abra la app
+    - asociar los vehículos al usuario y ver solo los que tiene asociados

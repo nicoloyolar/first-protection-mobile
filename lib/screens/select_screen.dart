@@ -34,35 +34,21 @@ class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen>
   }
 
   void _showAddVehicleDialog() {
-  final TextEditingController patenteController = TextEditingController();
-  String estadoSeleccionado = 'Activo';
-
-  showDialog(
-    context: context,
-      builder: (context) {
+    showDialog(
+      context: context,
+      builder: (_) {
         return CustomVehicleDialog(
-          patenteController: patenteController,
-          estadoSeleccionado: estadoSeleccionado,
-          onEstadoChanged: (nuevoEstado) {
-            estadoSeleccionado = nuevoEstado;
+          onPatenteConfirmed: (patenteFormatted) async {
+            final currentUser = FirebaseAuth.instance.currentUser;
+            await FirebaseFirestore.instance.collection('vehiculos').add({
+              'patente': patenteFormatted,
+              'estado': 'Activo',
+              'idUsuario': currentUser?.uid ?? '',
+            });
+            Navigator.of(context).pop();
           },
           onCancel: () {
             Navigator.of(context).pop();
-          },
-          onConfirm: () async {
-            final patente = patenteController.text.trim();
-
-            if (patente.isNotEmpty) {
-              final currentUser = FirebaseAuth.instance.currentUser;
-
-              await FirebaseFirestore.instance.collection('vehiculos').add({
-                'patente': patente,
-                'estado': estadoSeleccionado,
-                'idUsuario': currentUser?.uid ?? '',
-              });
-
-              Navigator.of(context).pop();
-            }
           },
         );
       },
@@ -86,12 +72,31 @@ class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen>
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF333333),
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Image.asset(
-            'assets/images/banner-first-protection.png',
-            height: 150,
-          ),
+        leading: const Icon(
+          Icons.account_circle,
+          color: Colors.white,
+          size: 36,
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              FirebaseAuth.instance.currentUser?.email ?? 'Usuario',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              'Selecciona tu vehículo',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white70,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(

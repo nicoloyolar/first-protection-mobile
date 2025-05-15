@@ -4,6 +4,8 @@ import 'package:first_protection/constants/messages.dart';
 import 'package:first_protection/widgets/custom_alert_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:first_protection/widgets/custom_password_reset_popup.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +21,43 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
 
   final FirebaseAuth _auth = FirebaseAuth.instance; 
+
+  final TextEditingController _resetEmailController = TextEditingController();
+
+  void _showPasswordResetDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => CustomPasswordResetPopup(
+        emailController: _resetEmailController,
+        onCancel: () {
+          Navigator.of(context).pop();
+        },
+        onConfirm: _sendPasswordResetEmail,
+      ),
+    );
+  }
+
+  Future<void> _sendPasswordResetEmail() async {
+    final email = _resetEmailController.text.trim();
+
+    if (email.isEmpty) {
+      Navigator.of(context).pop();
+      _showCustomAlert("Debes ingresar un correo electrónico.");
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      Navigator.of(context).pop();
+      _showCustomAlert("Te hemos enviado un correo para restablecer tu contraseña.");
+    } on FirebaseAuthException catch (e) {
+      Navigator.of(context).pop();
+      _showCustomAlert('Error: ${e.message}');
+    } catch (e) {
+      Navigator.of(context).pop();
+      _showCustomAlert('Error inesperado: $e');
+    }
+  }
 
   void _showCustomAlert(String message) {
     showDialog(
@@ -48,6 +87,9 @@ class _LoginScreenState extends State<LoginScreen> {
         email: user,
         password: pass,
       );
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
 
       Navigator.pushReplacementNamed(context, '/select');
 
@@ -172,6 +214,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                         child: const Text(
                           "¿No tienes cuenta? Crear nueva cuenta",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _showPasswordResetDialog,
+                        child: const Text(
+                          "¿Olvidaste tu contraseña?",
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
