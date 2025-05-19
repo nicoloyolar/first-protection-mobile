@@ -9,11 +9,12 @@ TO DO LIST
     HISTORIAL DEL DISPOSITIVO 
 
         - muestra historial de eventos en pantalla historial ✅
+        - historial por usuario
 
     MENSAJES AUTOMÁTICOS
 
         - registrar 'final de carrera' al cortar la corriente ✅
-        - enviar mensaje a carabineros solo si la alarma fue activada previamente 
+        - enviar mensaje a carabineros solo si la alarma fue activada previamente
 
     AUTENTICACIÓN
 
@@ -27,6 +28,7 @@ TO DO LIST
         - evitar patentes duplicadas ✅
         - mostrar patentes siempre en mayúsculas ✅
         - añadir campos 'marca', 'modelo', 'año' ✅
+        - edición de vehículo
 
     VINCULACIÓN CON DISPOSITIVO FÍSICO
 
@@ -41,3 +43,14 @@ TO DO LIST
         - personalizar pantalla de registro para diferenciarla del login ✅
         - resaltar visualmente cuando un vehículo ya estuvo en alerta ✅
         - añadir botón para cerrar sesión en más pantallas de ser necesario ✅
+        - integrar botón para 'recarga' del sistema first-protection
+
+    NOTIFICACIONES 
+
+        - integrar notificaciones push cuando se activa alarma 
+        - deben llegar notificaciones a todos los usuarios
+
+detalles y propuestas
+
+    - integrar sistema de prioridad en las tarjetas al momento de cambiar el color (rojo primero, luego amarillo, luego las que no tienen alertas) ✅
+    - integrar ícono o animación para las tarjetas al momento de estar en alerta ✅
