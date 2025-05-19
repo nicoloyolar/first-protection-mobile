@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:first_protection/screens/vehicle_history_screen.dart';
 import 'package:first_protection/widgets/custom_alert_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -68,6 +69,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     });
 
     if (_isAlarmActive) {
+      await _registrarEvento("activacion", "Alarma activada manualmente");
       _alertStartTime = DateTime.now();
       _elapsedTime = Duration.zero;
       _inicioCarrera = _formatTime(_alertStartTime!);
@@ -84,6 +86,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           .update({'estadoAlarma': 'activa'});
 
     } else {
+      await _registrarEvento("desactivacion", "Alarma detenida manualmente");
       _timer?.cancel();
       _alertStartTime = null;
       _elapsedTime = Duration.zero;
@@ -108,6 +111,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         break;
 
       case 'B':
+        await _registrarEvento("corte_corriente", "Botón de corte de corriente activado");
         message = 'Corte de corriente activado. Se ha interrumpido el suministro.';
         icon = Icons.power_off;
         iconColor = Colors.red;
@@ -117,7 +121,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           _isAlarmActive = false; 
           _timer?.cancel();
         });
-
+        break;
       case 'C':
         message = '¡Alarma sonora activada! El sistema está emitiendo una alerta.';
         icon = Icons.volume_up;
@@ -174,6 +178,20 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => VehicleHistoryScreen(
+                    idVehiculo: widget.idVehiculo,
+                    patente: widget.patente,
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: _showLogoutConfirmation,
@@ -288,6 +306,15 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     await prefs.clear(); 
     await FirebaseAuth.instance.signOut(); 
     Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false); 
+  }
+
+  Future<void> _registrarEvento(String tipo, String detalle) async {
+    await FirebaseFirestore.instance.collection('eventos').add({
+      'idVehiculo': widget.idVehiculo,
+      'tipo': tipo,
+      'detalle': detalle,
+      'timestamp': DateTime.now(),
+    });
   }
 
 }

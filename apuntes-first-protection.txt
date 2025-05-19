@@ -6,6 +6,10 @@ TO DO LIST
         - cambiar el color de la tarjeta a rojo cuando esté en alerta ✅
         - cambiar tarjeta a amarillo cuando finalice la alerta (humo descargado) ✅
 
+    HISTORIAL DEL DISPOSITIVO 
+
+        - muestra historial de eventos en pantalla historial ✅
+
     MENSAJES AUTOMÁTICOS
 
         - registrar 'final de carrera' al cortar la corriente ✅
@@ -35,5 +39,5 @@ TO DO LIST
         - mejorar estilo de 'custom vehicle dialog' con 6 campos individuales para patente ✅
         - mostrar datos del usuario (correo) en vez del logo en appbar ✅ 
         - personalizar pantalla de registro para diferenciarla del login ✅
-        - resaltar visualmente cuando un vehículo ya estuvo en alerta 
-        - añadir botón para cerrar sesión en más pantallas de ser necesario
+        - resaltar visualmente cuando un vehículo ya estuvo en alerta ✅
+        - añadir botón para cerrar sesión en más pantallas de ser necesario ✅
