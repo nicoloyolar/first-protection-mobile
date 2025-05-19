@@ -1,9 +1,11 @@
-// ignore_for_file: library_private_types_in_public_api
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
 
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:first_protection/widgets/custom_alert_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String patente;
@@ -47,14 +49,15 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       builder: (_) => CustomAlert(
         message: "¿Estás seguro que deseas cerrar sesión?",
         onCancel: () => Navigator.of(context).pop(),
-        onConfirm: () {
+        onConfirm: () async {
           Navigator.of(context).pop();
-          Navigator.pushReplacementNamed(context, '/');
+          await _logout(); 
         },
         showCancelButton: true,
       ),
     );
   }
+
 
   void _onMapCreated(GoogleMapController controller) {}
 
@@ -261,4 +264,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       ),
     );
   }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); 
+    await FirebaseAuth.instance.signOut(); 
+    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false); 
+  }
+
 }

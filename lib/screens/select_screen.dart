@@ -6,6 +6,7 @@ import 'package:first_protection/widgets/custom_vehicle_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:first_protection/widgets/custom_alert_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AdminDeviceSelectionScreen extends StatefulWidget {
   const AdminDeviceSelectionScreen({super.key});
@@ -16,17 +17,16 @@ class AdminDeviceSelectionScreen extends StatefulWidget {
 }
 
 class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen> {
-  void _showLogoutConfirmation() {
+  
+void _showLogoutConfirmation() {
     showDialog(
       context: context,
       builder: (_) => CustomAlert(
         message: "¿Estás seguro que deseas cerrar sesión?",
-        onCancel: () {
+        onCancel: () => Navigator.of(context).pop(),
+        onConfirm: () async {
           Navigator.of(context).pop();
-        },
-        onConfirm: () {
-          Navigator.of(context).pop();
-          Navigator.pushReplacementNamed(context, '/');
+          await _logout(); 
         },
         showCancelButton: true,
       ),
@@ -178,4 +178,12 @@ class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen>
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    await FirebaseAuth.instance.signOut();
+    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false); 
+  }
+
 }

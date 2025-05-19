@@ -1,12 +1,39 @@
-ADMINISTRADOR
-
-    - Monitorear, controlar y responder ante incidentes o alertas
-    - Puede ser el dueño del vehículo o alguien en una central de asistencia
-
-
 TO DO LIST
 
-    - desarrollar pantalla con rol de usuario
-    - considerar idioma español para correo de recuperación de contraseñas
-    - guardar la sesión del usuario para que no tenga que iniciar sesión cada vez que abra la app
-    - asociar los vehículos al usuario y ver solo los que tiene asociados
+    ESTADO DEL DISPOSITIVO 
+
+        - mostrar etiqueta 'activo' si el dispositivo está operativo ✅
+        - cambiar el color de la tarjeta a rojo cuando esté en alerta   
+        - cambiar tarjeta a amarillo cuando finalice la alerta (humo descargado)
+
+    MENSAJES AUTOMÁTICOS
+
+        - registrar 'final de carrera' al cortar la corriente ✅
+        - enviar mensaje a carabineros solo si la alarma fue activada previamente 
+
+    AUTENTICACIÓN
+
+        - implementar recuperación de contraseña ✅
+        - integrar sesión persistente con Shared Preferences ✅
+        - implementar cierre de sesión funcionalk que borre las credenciales del usuario ✅
+
+    GESTIÓN DE VEHÍCULOS 
+
+        - validar formato de patente con consonantes y números ✅
+        - evitar patentes duplicadas ✅
+        - mostrar patentes siempre en mayúsculas ✅
+        - añadir campos 'marca', 'modelo', 'año' ✅
+
+    VINCULACIÓN CON DISPOSITIVO FÍSICO
+
+        - permitir ingresar el número del chip SIM al registrar el vehículo 
+        - guardar ese número como dato del vehículo 
+        - usar ese número como destino automático de mensajes o contol del SIM800L 
+
+    EXPERIENCIA DE USUARIO / INTERFAZ
+
+        - mejorar estilo de 'custom vehicle dialog' con 6 campos individuales para patente ✅
+        - mostrar datos del usuario (correo) en vez del logo en appbar ✅ 
+        - personalizar pantalla de registro para diferenciarla del login ✅
+        - resaltar visualmente cuando un vehículo ya estuvo en alerta 
+        - añadir botón para cerrar sesión en más pantallas de ser necesario
