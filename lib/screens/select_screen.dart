@@ -18,7 +18,7 @@ class AdminDeviceSelectionScreen extends StatefulWidget {
 
 class _AdminDeviceSelectionScreenState extends State<AdminDeviceSelectionScreen> {
   
-void _showLogoutConfirmation() {
+  void _showLogoutConfirmation() {
     showDialog(
       context: context,
       builder: (_) => CustomAlert(
@@ -43,6 +43,7 @@ void _showLogoutConfirmation() {
             await FirebaseFirestore.instance.collection('vehiculos').add({
               'patente': patenteFormatted,
               'estado': 'Activo',
+              'estadoAlarma': 'inactiva', 
               'idUsuario': currentUser?.uid ?? '',
             });
             Navigator.of(context).pop();
@@ -65,6 +66,17 @@ void _showLogoutConfirmation() {
         shape: BoxShape.circle,
       ),
     );
+  }
+
+  Color getColorPorEstadoAlarma(String estadoAlarma) {
+    switch (estadoAlarma) {
+      case 'activa':
+        return Colors.red;
+      case 'pendiente':
+        return Colors.amber;
+      default:
+        return Colors.grey[300]!;
+    }
   }
 
   @override
@@ -126,10 +138,22 @@ void _showLogoutConfirmation() {
                 final vehicle = vehicles[index];
                 final patente = vehicle['patente'] ?? 'Sin patente';
                 final estado = vehicle['estado'] ?? 'Desconocido';
-
-                return Card(
-                  elevation: 3,
+                final estadoAlarma = vehicle.data().toString().contains('estadoAlarma')
+                  ? vehicle['estadoAlarma']
+                  : 'inactiva'; 
+                return Container(
                   margin: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: getColorPorEstadoAlarma(estadoAlarma),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(2, 2),
+                      ),
+                    ],
+                  ),
                   child: ListTile(
                     title: Text(
                       patente,

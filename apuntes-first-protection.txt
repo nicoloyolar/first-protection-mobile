@@ -3,8 +3,8 @@ TO DO LIST
     ESTADO DEL DISPOSITIVO 
 
         - mostrar etiqueta 'activo' si el dispositivo está operativo ✅
-        - cambiar el color de la tarjeta a rojo cuando esté en alerta   
-        - cambiar tarjeta a amarillo cuando finalice la alerta (humo descargado)
+        - cambiar el color de la tarjeta a rojo cuando esté en alerta ✅
+        - cambiar tarjeta a amarillo cuando finalice la alerta (humo descargado) ✅
 
     MENSAJES AUTOMÁTICOS
 
@@ -15,7 +15,7 @@ TO DO LIST
 
         - implementar recuperación de contraseña ✅
         - integrar sesión persistente con Shared Preferences ✅
-        - implementar cierre de sesión funcionalk que borre las credenciales del usuario ✅
+        - implementar cierre de sesión funcional que borre las credenciales del usuario ✅
 
     GESTIÓN DE VEHÍCULOS 
 

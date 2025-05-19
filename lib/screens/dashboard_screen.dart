@@ -6,6 +6,7 @@ import 'package:first_protection/widgets/custom_alert_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String patente;
@@ -61,27 +62,40 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   void _onMapCreated(GoogleMapController controller) {}
 
-  void _toggleAlarm() {
+  void _toggleAlarm() async {
     setState(() {
       _isAlarmActive = !_isAlarmActive;
-      if (_isAlarmActive) {
-        _alertStartTime = DateTime.now();
-        _elapsedTime = Duration.zero;
-        _inicioCarrera = _formatTime(_alertStartTime!);
-        _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-          setState(() {
-            _elapsedTime = DateTime.now().difference(_alertStartTime!);
-          });
-        });
-      } else {
-        _timer?.cancel();
-        _alertStartTime = null;
-        _elapsedTime = Duration.zero;
-      }
     });
+
+    if (_isAlarmActive) {
+      _alertStartTime = DateTime.now();
+      _elapsedTime = Duration.zero;
+      _inicioCarrera = _formatTime(_alertStartTime!);
+
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        setState(() {
+          _elapsedTime = DateTime.now().difference(_alertStartTime!);
+        });
+      });
+
+      await FirebaseFirestore.instance
+          .collection('vehiculos')
+          .doc(widget.idVehiculo)
+          .update({'estadoAlarma': 'activa'});
+
+    } else {
+      _timer?.cancel();
+      _alertStartTime = null;
+      _elapsedTime = Duration.zero;
+
+      await FirebaseFirestore.instance
+          .collection('vehiculos')
+          .doc(widget.idVehiculo)
+          .update({'estadoAlarma': 'pendiente'});
+    }
   }
 
-  void _showCustomAlert(String buttonPressed) {
+  Future<void> _showCustomAlert(String buttonPressed) async {
     String message = '';
     IconData icon = Icons.warning_amber_rounded;
     Color iconColor = const Color(0xFFFF6C2C);
@@ -92,6 +106,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         icon = Icons.smoke_free;
         iconColor = Colors.blue;
         break;
+
       case 'B':
         message = 'Corte de corriente activado. Se ha interrumpido el suministro.';
         icon = Icons.power_off;
@@ -99,13 +114,16 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         final now = DateTime.now();
         setState(() {
           _finalCarrera = _formatTime(now);
+          _isAlarmActive = false; 
+          _timer?.cancel();
         });
-        break;
+
       case 'C':
         message = '¡Alarma sonora activada! El sistema está emitiendo una alerta.';
         icon = Icons.volume_up;
         iconColor = Colors.green;
         break;
+
       case 'CALL':
         message = 'Función de llamada no implementada aún.';
         icon = Icons.phone;
