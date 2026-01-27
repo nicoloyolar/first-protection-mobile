@@ -1,6 +1,11 @@
-import 'package:flutter/foundation.dart' show kIsWeb; 
+import 'package:first_protection/core/controllers/vehiculo_controller.dart';
+import 'package:first_protection/firebase_options.dart';
+import 'package:first_protection/ui/screens/home_router.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'src/core/theme/app_colors.dart';
 import 'src/apps/client_mobile/ui/mobile_login_screen.dart';
@@ -9,9 +14,18 @@ import 'src/apps/admin_web/ui/admin_web_login_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  runApp(const FirstProtectionMasterApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => VehiculoController()),
+      ],
+      child: const FirstProtectionMasterApp(),
+    ),
+  );
 }
 
 class FirstProtectionMasterApp extends StatelessWidget {
@@ -41,7 +55,25 @@ class FirstProtectionMasterApp extends StatelessWidget {
         ),
       ),
 
-      home: kIsWeb ? const AdminLoginScreen() : const LoginScreen(),
+      home: kIsWeb 
+        ? const AdminLoginScreen() 
+        : StreamBuilder<User?>(
+            stream: FirebaseAuth.instance.authStateChanges(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator(color: AppColors.primaryOrange)),
+                );
+              }
+
+              if (snapshot.hasData) {
+                return const HomeRouter(); 
+              }
+
+              return const LoginScreen();
+            },
+          ),
     );
+    
   }
 }

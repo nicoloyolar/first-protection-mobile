@@ -1,4 +1,6 @@
-import 'package:first_protection/src/apps/client_mobile/ui/home/client_home_screen.dart';
+// ignore_for_file: deprecated_member_use
+
+import 'package:first_protection/ui/screens/home_router.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
@@ -62,42 +64,38 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _submitForm() async {
-    FocusScope.of(context).unfocus();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-    setState(() => _isLoading = true);
-
-    String? error;
-
-    if (_isLoginMode) {
-      error = await _authService.login(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-    } else {
-      error = await _authService.register(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+    if (email.isEmpty || password.isEmpty) {
+      _showErrorDialog("Por favor, ingresa tu correo y contraseña.");
+      return;
     }
 
-    setState(() => _isLoading = false);
+    FocusScope.of(context).unfocus();
+    setState(() => _isLoading = true);
 
-    if (!mounted) return;
+    try {
+      String? error;
+      if (_isLoginMode) {
+        error = await _authService.login(email: email, password: password);
+      } else {
+        error = await _authService.register(email: email, password: password);
+      }
 
-    if (error == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_isLoginMode ? 'Bienvenido de vuelta' : 'Cuenta creada con éxito'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const ClientHomeScreen()),
-      );
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    } else {
-      _showErrorDialog(error); 
+      if (error == null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeRouter()),
+        );
+      } else {
+        _showErrorDialog(error);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorDialog("Error de conexión: Asegúrate de tener internet.");
     }
   }
 
@@ -114,18 +112,34 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  height: 160,
+                  width: 160,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primaryOrange, width: 2),
+                    color: AppColors.backgroundBlack, 
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryOrange.withOpacity(0.2),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                    border: Border.all(
+                      color: AppColors.primaryOrange.withOpacity(0.5), 
+                      width: 2,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.shield_outlined, 
-                    size: 60,
-                    color: AppColors.primaryOrange,
+                  child: ClipOval( 
+                    child: Padding(
+                      padding: const EdgeInsets.all(15.0), 
+                      child: Image.asset(
+                        'assets/images/logo-first-protection.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 30),
                 
                 Text(
                   'FIRST PROTECTION',

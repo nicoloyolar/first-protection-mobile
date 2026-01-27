@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.firstprotection.first_protection"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -22,8 +22,8 @@ android {
 
     defaultConfig {
         applicationId = "cl.firstprotection.mobile"
-        minSdk = flutter.minSdkVersion // Firestore necesita esto
-        targetSdk = flutter.targetSdkVersion
+        minSdk = flutter.minSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

@@ -1,0 +1,58 @@
+APP MÓVIL 
+
+    - integrar logo en login ✅
+    - integrar logo en icono de la aplicación ✅
+
+    DASHBOARD
+
+        - integrar detalle de batería y velocidad en el dashboard ✅
+        - integrar seguimiento mediante waze o google maps ✅
+        - integrar indicador de humo ✅
+        - integrar slider para cortar la corriente ✅
+        - utilizar ubicación del móvil para hacer pruebas y despliegue de información ✅
+        - optimizar el mapa al momento de ingresar al dashboard ✅
+        - el mapa sigue correctamente la posición del usuario ✅
+
+    - notificaciones
+
+        - SMS 
+        - correo 
+        - llamado a la central (números establecidos) 
+
+    - integrar un nuevo dispositivo / vehículo (hasta 3 vehículos) ✅
+    - pantalla de flota / familia ✅
+    - integración de led de estado en el panel lateral de dispositivos ✅
+    - geocerca (validación de distancia - opcional - velocidad + distancia)
+    - integrar cambio de estado de humo ✅
+    - integrar comunicación mediante comandos ✅
+    - registro de datos del usuario propietario del vehículo 
+
+        - nombre
+        - rut 
+        - email 
+        - telefono 
+        - domicilio
+        - contacto emergencia
+
+    - integrar color en el vehículo 
+    - comentario random (tiene un foco malo) 
+    - optimizar slider 
+
+    - registro de dispositivo / vehículo ✅
+        
+        - integrar token o código aleatorio para el id del dispositivo ✅
+
+PANEL WEB
+
+    - visualización en tiempo real de dispositivos ✅
+    - datos y estados en tarjeta para administrador ✅
+    - seguimiento automático al seleccionar un dispositivo ✅
+    - tarjetas para cada vehículo / dispositivo registrado ✅
+    - comandos enviados desde panel web ✅
+    - filtros para buscar por patente
+    - filtros por estado
+    - filtros por subsistema 
+    - geocodificación inversa
+    - integrar historial de ruta 
+    - integrar salud del dispositivo 
+    - log de comandos 

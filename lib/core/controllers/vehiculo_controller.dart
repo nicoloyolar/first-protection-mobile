@@ -1,3 +1,5 @@
+// ignore_for_file: empty_catches
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/vehiculo_model.dart';
@@ -14,18 +16,26 @@ class VehiculoController extends ChangeNotifier {
   bool cargando = false;
   StreamSubscription? _suscripcionEstado;
 
+  bool get tieneVehiculos => listaVehiculos.isNotEmpty;
+
   Future<void> cargarFlota(String uid) async {
+    if (cargando) return;
+
     cargando = true;
     notifyListeners();
 
-    listaVehiculos = await _dbService.obtenerVehiculosUsuario(uid);
-    
-    if (listaVehiculos.isNotEmpty) {
-      seleccionarVehiculo(listaVehiculos.first);
+    try {
+      listaVehiculos = await _dbService.obtenerVehiculosUsuario(uid);
+      
+      if (listaVehiculos.isNotEmpty) {
+        seleccionarVehiculo(listaVehiculos.first);
+      }
+    } catch (e) {
+      debugPrint("Error al cargar flota: $e");
+    } finally {
+      cargando = false;
+      notifyListeners();
     }
-
-    cargando = false;
-    notifyListeners();
   }
 
   void seleccionarVehiculo(Vehiculo vehiculo) {
@@ -38,9 +48,55 @@ class VehiculoController extends ChangeNotifier {
         .listen((nuevoEstado) {
       estadoActual = nuevoEstado;
       notifyListeners(); 
+    }, onError: (error) {
+      debugPrint("Error en Stream de dispositivo: $error");
     });
 
     notifyListeners();
+  }
+
+  Future<void> cambiarEstadoCortaCorriente(bool activar) async {
+    if (vehiculoSeleccionado == null) return;
+    
+    await _dbService.actualizarEstadoMando(
+      vehiculoSeleccionado!.idDispositivo, 
+      'cortaCorriente', 
+      activar
+    );
+  }
+
+  Future<void> cambiarEstadoProtocolo(bool activar) async {
+    if (vehiculoSeleccionado == null) return;
+    
+    await _dbService.actualizarEstadoMando(
+      vehiculoSeleccionado!.idDispositivo, 
+      'protocoloActivo', 
+      activar
+    );
+  }
+
+  Future<bool> vincularVehiculo({
+    required String idUsuario,
+    required String idDispositivo,
+    required String alias,
+    required String patente,
+    required String marca,
+    required String modelo,
+  }) async {
+    bool exito = await _dbService.vincularNuevoVehiculo(
+      idUsuario: idUsuario,
+      idDispositivo: idDispositivo,
+      alias: alias,
+      patente: patente,
+      marca: marca,
+      modelo: modelo,
+    );
+
+    if (exito) {
+      await cargarFlota(idUsuario);
+    }
+    
+    return exito;
   }
 
   @override
@@ -48,4 +104,15 @@ class VehiculoController extends ChangeNotifier {
     _suscripcionEstado?.cancel();
     super.dispose();
   }
+
+  Future<void> cambiarEstadoHumo(bool nuevoEstado) async {
+    if (vehiculoSeleccionado == null) return;
+    
+    await _dbService.actualizarEstadoMando(
+      vehiculoSeleccionado!.idDispositivo, 
+      'humo', 
+      nuevoEstado
+    );
+  }
+
 }

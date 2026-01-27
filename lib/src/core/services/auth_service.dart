@@ -6,16 +6,35 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   Future<String?> login({required String email, required String password}) async {
+    if (email.isEmpty || password.isEmpty) {
+      return 'Por favor, completa todos los campos';
+    }
+
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      await _auth.signInWithEmailAndPassword(
+        email: email.trim(), 
+        password: password,
+      );
       return null;
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found') return 'Usuario no encontrado';
-      if (e.code == 'wrong-password') return 'Contraseña incorrecta';
-      if (e.code == 'invalid-email') return 'El correo no es válido'; 
-      return 'Error: ${e.message}';
+      switch (e.code) {
+        case 'user-not-found':
+          return 'Usuario no encontrado';
+        case 'wrong-password':
+          return 'Contraseña incorrecta';
+        case 'invalid-email':
+          return 'El correo no es válido';
+        case 'invalid-credential': 
+          return 'Credenciales inválidas o expiradas';
+        case 'user-disabled':
+          return 'Esta cuenta ha sido deshabilitada';
+        case 'too-many-requests':
+          return 'Demasiados intentos. Intenta más tarde';
+        default:
+          return 'Error de acceso: ${e.message}';
+      }
     } catch (e) {
-      return 'Error desconocido: $e';
+      return 'Error inesperado: No pudimos conectar con el servidor';
     }
   }
 

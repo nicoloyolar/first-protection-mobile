@@ -1,3 +1,5 @@
+// ignore_for_file: empty_catches
+
 import 'package:firebase_database/firebase_database.dart';
 import '../models/vehiculo_model.dart';
 import '../models/estado_dispositivo_model.dart';
@@ -29,23 +31,55 @@ class DatabaseService {
   }
 
   Stream<EstadoDispositivo> obtenerDispositivos(String idDispositivo) {
-    return _db.child('estado_vehiculo/$idDispositivo').onValue.map((event) {
-      final data = event.snapshot.value as Map<dynamic, dynamic>?;
+    return _db.child('dispositivos').child(idDispositivo).onValue.map((event) {
+      final snapshot = event.snapshot;
       
-      if (data == null) {
-        return EstadoDispositivo(
-            idDispositivo         : idDispositivo, 
-            ultimaActualizacion   : 0, 
-            latitud               : 0, 
-            longitud              : 0, 
-            velocidad             : 0, 
-            cortaCorriente        : false, 
-            humoDesplegado        : false, 
-            sirenaActiva          : false
-        );
+      if (snapshot.value == null) {
+        throw Exception("No hay datos para este dispositivo");
       }
-      data['idDispositivo'] = idDispositivo; 
-      return EstadoDispositivo.fromMap(data);
+
+      final data = Map<dynamic, dynamic>.from(snapshot.value as Map);
+      
+      return EstadoDispositivo.fromMap(idDispositivo, data);
     });
+  }
+
+  Future<bool> vincularNuevoVehiculo({
+    required String idUsuario,
+    required String idDispositivo,
+    required String alias,
+    required String patente,
+    required String marca,
+    required String modelo,
+  }) async {
+    try {
+      final String idVehiculo = idDispositivo; 
+
+      Map<String, dynamic> actualizaciones = {};
+
+      actualizaciones['vehicles_meta/$idVehiculo'] = {
+        'idDispositivo'   : idDispositivo,
+        'idPropietario'   : idUsuario,
+        'alias'           : alias,
+        'patente'         : patente,
+        'marca'           : marca,
+        'modelo'          : modelo,
+      };
+
+      actualizaciones['usuarios/$idUsuario/mis_vehiculos/$idVehiculo'] = true;
+      actualizaciones['dispositivos/$idDispositivo/alias'] = alias;
+      actualizaciones['dispositivos/$idDispositivo/patente'] = patente;
+      actualizaciones['dispositivos/$idDispositivo/id'] = idDispositivo;
+      actualizaciones['dispositivos/$idDispositivo/ultimaVinculacion'] = ServerValue.timestamp;
+
+      await _db.update(actualizaciones);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> actualizarEstadoMando(String idDispositivo, String campo, bool valor) async {
+    await _db.child('dispositivos').child(idDispositivo).child(campo).set(valor);
   }
 }
