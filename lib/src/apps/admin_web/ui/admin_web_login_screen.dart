@@ -50,16 +50,34 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(15),
+                    height: 140, 
+                    width: 140,
                     decoration: BoxDecoration(
-                      color: AppColors.primaryOrange.withOpacity(0.1),
                       shape: BoxShape.circle,
+                      color: AppColors.backgroundBlack, 
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryOrange.withOpacity(0.2),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                      border: Border.all(
+                        color: AppColors.primaryOrange.withOpacity(0.5), 
+                        width: 2,
+                      ),
                     ),
-                    child: const Icon(Icons.shield_outlined, 
-                      color: AppColors.primaryOrange, size: 45),
+                    child: ClipOval( 
+                      child: Padding(
+                        padding: const EdgeInsets.all(15.0), 
+                        child: Image.asset(
+                          'assets/images/logo-first-protection.png',
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high, 
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 25),
-                  
                   Text(
                     'SISTEMA CENTRAL',
                     style: GoogleFonts.oswald(

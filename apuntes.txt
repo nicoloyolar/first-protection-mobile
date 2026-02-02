@@ -44,15 +44,58 @@ APP MÓVIL
 
 PANEL WEB
 
+    - integrar logo en login ✅
+    - integrar logo en el favicon aplicación ✅
     - visualización en tiempo real de dispositivos ✅
     - datos y estados en tarjeta para administrador ✅
     - seguimiento automático al seleccionar un dispositivo ✅
     - tarjetas para cada vehículo / dispositivo registrado ✅
     - comandos enviados desde panel web ✅
-    - filtros para buscar por patente
-    - filtros por estado
-    - filtros por subsistema 
-    - geocodificación inversa
-    - integrar historial de ruta 
-    - integrar salud del dispositivo 
-    - log de comandos 
+    - filtros para buscar por patente ✅
+    - filtros por estado ✅ 
+    - visualización de datos del usuario propietario del vehículo / dispositivo ✅ 
+
+        - nombre ✅ 
+        - rut ✅ 
+        - email ✅ 
+        - telefono ✅ 
+        - domicilio ✅ 
+        - contacto emergencia ✅ 
+
+    - integración de panel de inventario ✅
+
+        tabla administración
+
+            - id dispositivo ✅
+            - patente ✅
+            - alias ✅
+            - dueño ✅
+            - estado ✅
+            - acciones ✅
+
+        detalle 
+
+            - dueño
+
+                - nombre ✅
+                - rut ✅
+                - email ✅
+                - telefono ✅
+                - domicilio ✅
+                - contacto de emergencia ✅
+
+            - vehículo 
+
+                - marca ✅
+                - modelo ✅
+                - año ✅
+                - color ✅
+                - vinculo familiar ✅
+                - comentario ✅
+
+            - configuración 
+
+                - fecha instalación ✅
+                - último mantenimiento ✅
+    
+    - formatear e integrar validaciones en campos de formulario de detalle ✅
