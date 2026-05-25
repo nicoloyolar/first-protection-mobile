@@ -9,20 +9,16 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'src/core/theme/app_colors.dart';
 import 'src/apps/client_mobile/ui/mobile_login_screen.dart';
-import 'src/apps/admin_web/ui/admin_web_login_screen.dart';
+import 'src/apps/admin_web/ui/admin_access_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(
     MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => VehiculoController()),
-      ],
+      providers: [ChangeNotifierProvider(create: (_) => VehiculoController())],
       child: const FirstProtectionMasterApp(),
     ),
   );
@@ -36,7 +32,7 @@ class FirstProtectionMasterApp extends StatelessWidget {
     return MaterialApp(
       title: 'First Protection',
       debugShowCheckedModeBanner: false,
-      
+
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: AppColors.backgroundBlack,
@@ -55,25 +51,28 @@ class FirstProtectionMasterApp extends StatelessWidget {
         ),
       ),
 
-      home: kIsWeb 
-        ? const AdminLoginScreen() 
-        : StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.authStateChanges(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator(color: AppColors.primaryOrange)),
-                );
-              }
+      home: kIsWeb
+          ? const AdminAccessGate()
+          : StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryOrange,
+                      ),
+                    ),
+                  );
+                }
 
-              if (snapshot.hasData) {
-                return const HomeRouter(); 
-              }
+                if (snapshot.hasData) {
+                  return const HomeRouter();
+                }
 
-              return const LoginScreen();
-            },
-          ),
+                return const LoginScreen();
+              },
+            ),
     );
-    
   }
 }

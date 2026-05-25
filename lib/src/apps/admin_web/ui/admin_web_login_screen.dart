@@ -1,18 +1,74 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:first_protection/src/apps/admin_web/ui/admin_dashboard_web.dart';
+import 'package:first_protection/src/core/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 
 class AdminLoginScreen extends StatefulWidget {
-  const AdminLoginScreen({super.key});
+  final String? initialError;
+
+  const AdminLoginScreen({super.key, this.initialError});
 
   @override
   State<AdminLoginScreen> createState() => _AdminLoginScreenState();
 }
 
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
+  final _operatorController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _authService = AuthService();
+
+  bool _isLoading = false;
+  bool _isPasswordVisible = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _error = widget.initialError;
+  }
+
+  @override
+  void dispose() {
+    _operatorController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final email = _operatorController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Ingresa tu correo y contraseña');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final error = await _authService.loginAdmin(
+      email: email,
+      password: password,
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (error != null) {
+      setState(() => _error = error);
+      return;
+    }
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const AdminDashboardWeb()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -23,10 +79,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
           gradient: RadialGradient(
             center: Alignment.center,
             radius: 1.2,
-            colors: [
-              Color(0xFF1a1a1a), 
-              Color(0xFF000000), 
-            ],
+            colors: [Color(0xFF1a1a1a), Color(0xFF000000)],
           ),
         ),
         child: Center(
@@ -35,7 +88,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               width: 420,
               padding: const EdgeInsets.all(50),
               decoration: BoxDecoration(
-                color: AppColors.surfaceDark.withOpacity(0.8), 
+                color: AppColors.surfaceDark.withOpacity(0.8),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: Colors.white.withOpacity(0.05)),
                 boxShadow: [
@@ -43,18 +96,18 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     color: AppColors.primaryOrange.withOpacity(0.05),
                     blurRadius: 40,
                     spreadRadius: 5,
-                  )
+                  ),
                 ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    height: 140, 
+                    height: 140,
                     width: 140,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.backgroundBlack, 
+                      color: AppColors.backgroundBlack,
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.primaryOrange.withOpacity(0.2),
@@ -63,17 +116,17 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         ),
                       ],
                       border: Border.all(
-                        color: AppColors.primaryOrange.withOpacity(0.5), 
+                        color: AppColors.primaryOrange.withOpacity(0.5),
                         width: 2,
                       ),
                     ),
-                    child: ClipOval( 
+                    child: ClipOval(
                       child: Padding(
-                        padding: const EdgeInsets.all(15.0), 
+                        padding: const EdgeInsets.all(15.0),
                         child: Image.asset(
                           'assets/images/logo-first-protection.png',
                           fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high, 
+                          filterQuality: FilterQuality.high,
                         ),
                       ),
                     ),
@@ -95,27 +148,46 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       letterSpacing: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 50),
-
+                  const SizedBox(height: 40),
+                  if (_error != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.redAccent.withOpacity(0.35),
+                        ),
+                      ),
+                      child: Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                   _buildModernField(
-                    label: 'ID de Operador',
+                    label: 'Correo de Operador',
                     icon: Icons.person_outline,
+                    controller: _operatorController,
+                    textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 25),
                   _buildModernField(
                     label: 'Código de Acceso',
                     icon: Icons.lock_outline,
+                    controller: _passwordController,
                     isPassword: true,
+                    onSubmitted: (_) => _submit(),
                   ),
                   const SizedBox(height: 50),
-
                   InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context, 
-                        MaterialPageRoute(builder: (_) => const AdminDashboardWeb())
-                      );
-                    },
+                    onTap: _isLoading ? null : _submit,
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       width: double.infinity,
@@ -123,29 +195,35 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         gradient: const LinearGradient(
-                          colors: [
-                            AppColors.primaryOrange,
-                            Color(0xFFFF8C00),
-                          ],
+                          colors: [AppColors.primaryOrange, Color(0xFFFF8C00)],
                         ),
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.primaryOrange.withOpacity(0.3),
                             blurRadius: 15,
                             offset: const Offset(0, 8),
-                          )
+                          ),
                         ],
                       ),
-                      child: const Center(
-                        child: Text(
-                          'INICIAR SESIÓN',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                            fontSize: 16,
-                          ),
-                        ),
+                      child: Center(
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'INICIAR SESIÓN',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2,
+                                  fontSize: 16,
+                                ),
+                              ),
                       ),
                     ),
                   ),
@@ -158,25 +236,63 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     );
   }
 
-  Widget _buildModernField({required String label, required IconData icon, bool isPassword = false}) {
+  Widget _buildModernField({
+    required String label,
+    required IconData icon,
+    required TextEditingController controller,
+    bool isPassword = false,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onSubmitted,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, color: AppColors.primaryOrange.withOpacity(0.7), size: 18),
+            Icon(
+              icon,
+              color: AppColors.primaryOrange.withOpacity(0.7),
+              size: 18,
+            ),
             const SizedBox(width: 8),
-            Text(label.toUpperCase(), 
-              style: const TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+            Text(
+              label.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
+            ),
           ],
         ),
         TextField(
-          obscureText: isPassword,
+          controller: controller,
+          obscureText: isPassword && !_isPasswordVisible,
+          textInputAction: textInputAction,
+          onSubmitted: onSubmitted,
           style: const TextStyle(color: Colors.white, fontSize: 16),
-          decoration: const InputDecoration(
-            contentPadding: EdgeInsets.symmetric(vertical: 10),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.primaryOrange)),
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+            enabledBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white10),
+            ),
+            focusedBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: AppColors.primaryOrange),
+            ),
+            suffixIcon: isPassword
+                ? IconButton(
+                    onPressed: () => setState(
+                      () => _isPasswordVisible = !_isPasswordVisible,
+                    ),
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: Colors.white38,
+                    ),
+                  )
+                : null,
           ),
         ),
       ],

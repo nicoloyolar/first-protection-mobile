@@ -1,11 +1,11 @@
 class Dispositivo {
-  final String idDispositivo;              
-  final String direccionMac;      
-  final String versionFirmware; 
+  final String idDispositivo;
+  final String direccionMac;
+  final String versionFirmware;
   final DateTime fechaInstalacion;
   final DateTime fechaUltimoMantenimiento;
-  final bool activo;           
-  final String? idVehiculoActual; 
+  final bool activo;
+  final String? idVehiculoActual;
 
   Dispositivo({
     required this.idDispositivo,

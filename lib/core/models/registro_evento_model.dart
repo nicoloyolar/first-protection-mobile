@@ -1,18 +1,13 @@
-enum TipoEvento {
-  alarmaActivada,    
-  comandoRemoto,     
-  infoSistema,       
-  salidaZonaSegura   
-}
+enum TipoEvento { alarmaActivada, comandoRemoto, infoSistema, salidaZonaSegura }
 
 class RegistroEvento {
   final String id;
-  final String idVehiculo; 
-  final DateTime fecha;    
+  final String idVehiculo;
+  final DateTime fecha;
   final TipoEvento tipo;
-  final String titulo;       
-  final String descripcion;  
-  final String actor;       
+  final String titulo;
+  final String descripcion;
+  final String actor;
   final double latitud;
   final double longitud;
 

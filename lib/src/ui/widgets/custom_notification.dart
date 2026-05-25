@@ -17,11 +17,8 @@ class FirstProtectionNotification {
     hide();
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => _NotificationWidget(
-        message: message,
-        type: type,
-        onDismiss: hide, 
-      ),
+      builder: (context) =>
+          _NotificationWidget(message: message, type: type, onDismiss: hide),
     );
 
     Overlay.of(context).insert(_overlayEntry!);
@@ -56,7 +53,8 @@ class _NotificationWidget extends StatefulWidget {
   State<_NotificationWidget> createState() => _NotificationWidgetState();
 }
 
-class _NotificationWidgetState extends State<_NotificationWidget> with SingleTickerProviderStateMixin {
+class _NotificationWidgetState extends State<_NotificationWidget>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
   late Animation<double> _opacityAnimation;
@@ -71,21 +69,21 @@ class _NotificationWidgetState extends State<_NotificationWidget> with SingleTic
     );
 
     _offsetAnimation = Tween<Offset>(
-      begin: const Offset(0.0, -1.5), 
-      end: Offset.zero, 
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutBack, 
-    ));
+      begin: const Offset(0.0, -1.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
-    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
+    _opacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(_controller);
 
-    _controller.forward(); 
+    _controller.forward();
   }
 
   @override
   void dispose() {
-    _controller.reverse().then((_) => widget.onDismiss()); 
+    _controller.reverse().then((_) => widget.onDismiss());
     _controller.dispose();
     super.dispose();
   }
@@ -114,18 +112,20 @@ class _NotificationWidgetState extends State<_NotificationWidget> with SingleTic
         position: _offsetAnimation,
         child: FadeTransition(
           opacity: _opacityAnimation,
-          child: Material( 
-            color: Colors.transparent, 
+          child: Material(
+            color: Colors.transparent,
             child: Container(
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 10, 
+                top: MediaQuery.of(context).padding.top + 10,
                 bottom: 15,
                 left: 20,
                 right: 20,
               ),
               decoration: BoxDecoration(
                 color: backgroundColor,
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(20),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.3),
@@ -134,7 +134,7 @@ class _NotificationWidgetState extends State<_NotificationWidget> with SingleTic
                   ),
                 ],
               ),
-              child: SafeArea( 
+              child: SafeArea(
                 child: Row(
                   children: [
                     Icon(icon, color: Colors.white, size: 28),

@@ -18,7 +18,7 @@ class VincularVehiculoScreen extends StatefulWidget {
 
 class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   final _idDispositivoController = TextEditingController();
   final _aliasController = TextEditingController();
   final _patenteController = TextEditingController();
@@ -36,8 +36,11 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
   void _generarTokenDispositivo() {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     final random = Random();
-    String randomCode = List.generate(6, (index) => chars[random.nextInt(chars.length)]).join();
-    
+    String randomCode = List.generate(
+      6,
+      (index) => chars[random.nextInt(chars.length)],
+    ).join();
+
     _idDispositivoController.text = "GPS-$randomCode";
   }
 
@@ -60,11 +63,13 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      final patenteLimpia = _patenteController.text.replaceAll(RegExp(r'[\s-]'), '').toUpperCase();
+      final patenteLimpia = _patenteController.text
+          .replaceAll(RegExp(r'[\s-]'), '')
+          .toUpperCase();
       try {
         bool exito = await vCtrl.vincularVehiculo(
           idUsuario: user.uid,
-          idDispositivo: _idDispositivoController.text.trim(), 
+          idDispositivo: _idDispositivoController.text.trim(),
           alias: _aliasController.text.trim(),
           patente: patenteLimpia,
           marca: _marcaController.text.trim(),
@@ -78,7 +83,9 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
               message: "¡Vehículo vinculado con éxito!",
               type: NotificationType.success,
             );
-            Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/', (route) => false);
           } else {
             FirstProtectionNotification.show(
               context: context,
@@ -109,12 +116,19 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           "ACTIVAR ESCUDO",
-          style: GoogleFonts.oswald(fontWeight: FontWeight.bold, letterSpacing: 1.5),
+          style: GoogleFonts.oswald(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.5,
+          ),
         ),
       ),
       body: TweenAnimationBuilder<double>(
@@ -139,27 +153,27 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
                   child: Form(
                     key: _formKey,
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center, 
+                      mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 20),
                         _buildHeaderIcon(),
                         const SizedBox(height: 40),
-                        
+
                         _buildSectionTitle("IDENTIFICACIÓN"),
-                        
+
                         _buildPremiumInput(
                           label: "ID Dispositivo (Auto-Asignado)",
                           controller: _idDispositivoController,
-                          icon: Icons.vpn_key_outlined, 
+                          icon: Icons.vpn_key_outlined,
                           isPrimary: true,
-                          readOnly: true, 
+                          readOnly: true,
                           hint: "Generando...",
                         ),
-                        
+
                         const SizedBox(height: 25),
                         _buildSectionTitle("DETALLES DEL VEHÍCULO"),
-                        
+
                         _buildPremiumInput(
                           label: "Alias / Nombre",
                           controller: _aliasController,
@@ -167,7 +181,7 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
                           hint: "Ej: Mi Camioneta",
                         ),
                         const SizedBox(height: 15),
-                        
+
                         Row(
                           children: [
                             Expanded(
@@ -176,12 +190,16 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
                                 controller: _patenteController,
                                 icon: Icons.badge_outlined,
                                 hint: "AAAA10",
-                                validator: _validarPatente, 
+                                validator: _validarPatente,
                                 onChanged: (val) {
-                                  _patenteController.value = _patenteController.value.copyWith(
-                                    text: val.toUpperCase(),
-                                    selection: TextSelection.collapsed(offset: val.length),
-                                  );
+                                  _patenteController.value = _patenteController
+                                      .value
+                                      .copyWith(
+                                        text: val.toUpperCase(),
+                                        selection: TextSelection.collapsed(
+                                          offset: val.length,
+                                        ),
+                                      );
                                 },
                               ),
                             ),
@@ -197,17 +215,17 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
                           ],
                         ),
                         const SizedBox(height: 15),
-                        
+
                         _buildPremiumInput(
                           label: "Modelo",
                           controller: _modeloController,
                           icon: Icons.minor_crash_outlined,
                           hint: "Hilux 2024",
                         ),
-                        
+
                         const SizedBox(height: 50),
                         _buildSubmitButton(),
-                        const SizedBox(height: 40), 
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
@@ -227,7 +245,10 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
         decoration: BoxDecoration(
           color: AppColors.primaryOrange.withOpacity(0.1),
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.primaryOrange.withOpacity(0.2), width: 1),
+          border: Border.all(
+            color: AppColors.primaryOrange.withOpacity(0.2),
+            width: 1,
+          ),
         ),
         child: const Icon(
           Icons.shield_outlined,
@@ -260,16 +281,16 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
     bool isPrimary = false,
     bool readOnly = false,
     String? hint,
-    String? Function(String?)? validator, 
+    String? Function(String?)? validator,
     void Function(String)? onChanged,
   }) {
     return TextFormField(
       controller: controller,
-      validator: validator, 
+      validator: validator,
       onChanged: onChanged,
-      readOnly: readOnly, 
+      readOnly: readOnly,
       style: TextStyle(
-        color: readOnly ? AppColors.primaryOrange : Colors.white, 
+        color: readOnly ? AppColors.primaryOrange : Colors.white,
         fontSize: 15,
         fontWeight: readOnly ? FontWeight.bold : FontWeight.normal,
       ),
@@ -279,23 +300,37 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white10, fontSize: 13),
         labelStyle: const TextStyle(color: Colors.white54, fontSize: 14),
-        prefixIcon: Icon(icon, color: isPrimary ? AppColors.primaryOrange : Colors.white30, size: 22),
-        suffixIcon: readOnly ? const Icon(Icons.lock_outline, color: Colors.white24, size: 18) : null,
+        prefixIcon: Icon(
+          icon,
+          color: isPrimary ? AppColors.primaryOrange : Colors.white30,
+          size: 22,
+        ),
+        suffixIcon: readOnly
+            ? const Icon(Icons.lock_outline, color: Colors.white24, size: 18)
+            : null,
         filled: true,
-        fillColor: isPrimary ? Colors.white.withOpacity(0.05) : Colors.transparent,
+        fillColor: isPrimary
+            ? Colors.white.withOpacity(0.05)
+            : Colors.transparent,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.primaryOrange, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.primaryOrange,
+            width: 1.5,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Colors.redAccent, width: 1),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 18,
+        ),
       ),
     );
   }
@@ -318,20 +353,29 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryOrange,
           foregroundColor: Colors.black,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           elevation: 0,
         ),
         onPressed: _procesando ? null : _enviarFormulario,
-        child: _procesando 
-          ? const SizedBox(
-              height: 24, 
-              width: 24, 
-              child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2.5)
-            )
-          : Text(
-              "ACTIVAR PROTECCIÓN",
-              style: GoogleFonts.oswald(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1),
-            ),
+        child: _procesando
+            ? const SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.black,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : Text(
+                "ACTIVAR PROTECCIÓN",
+                style: GoogleFonts.oswald(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
       ),
     );
   }

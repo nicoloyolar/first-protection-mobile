@@ -16,12 +16,12 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   final _authService = AuthService();
 
   bool _isPasswordVisible = false;
-  bool _isLoading = false;    
-  bool _isLoginMode = true;     
+  bool _isLoading = false;
+  bool _isLoginMode = true;
 
   @override
   void dispose() {
@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
         content: Text(
-          message, 
+          message,
           style: GoogleFonts.roboto(color: Colors.white70, fontSize: 16),
         ),
         actions: [
@@ -55,7 +55,10 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text(
               "ENTENDIDO",
-              style: TextStyle(color: AppColors.primaryOrange, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.primaryOrange,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -107,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 30),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400), 
+            constraints: const BoxConstraints(maxWidth: 400),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -116,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: 160,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.backgroundBlack, 
+                    color: AppColors.backgroundBlack,
                     boxShadow: [
                       BoxShadow(
                         color: AppColors.primaryOrange.withOpacity(0.2),
@@ -125,13 +128,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                     border: Border.all(
-                      color: AppColors.primaryOrange.withOpacity(0.5), 
+                      color: AppColors.primaryOrange.withOpacity(0.5),
                       width: 2,
                     ),
                   ),
-                  child: ClipOval( 
+                  child: ClipOval(
                     child: Padding(
-                      padding: const EdgeInsets.all(15.0), 
+                      padding: const EdgeInsets.all(15.0),
                       child: Image.asset(
                         'assets/images/logo-first-protection.png',
                         fit: BoxFit.contain,
@@ -140,10 +143,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 30),
-                
+
                 Text(
                   'FIRST PROTECTION',
-                  style: GoogleFonts.oswald( 
+                  style: GoogleFonts.oswald(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -158,7 +161,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: 'Correo Electrónico',
-                    prefixIcon: Icon(Icons.person_outline, color: AppColors.primaryOrange),
+                    prefixIcon: Icon(
+                      Icons.person_outline,
+                      color: AppColors.primaryOrange,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -169,13 +175,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     labelText: 'Contraseña',
-                    prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primaryOrange),
+                    prefixIcon: const Icon(
+                      Icons.lock_outline,
+                      color: AppColors.primaryOrange,
+                    ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                        _isPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                         color: AppColors.textGrey,
                       ),
-                      onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                      onPressed: () => setState(
+                        () => _isPasswordVisible = !_isPasswordVisible,
+                      ),
                     ),
                   ),
                 ),
@@ -185,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _submitForm, 
+                    onPressed: _isLoading ? null : _submitForm,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryOrange,
                       foregroundColor: Colors.white,
@@ -193,16 +206,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(25),
                       ),
                       textStyle: const TextStyle(
-                        fontSize: 16, 
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1,
                       ),
                     ),
                     child: _isLoading
                         ? const SizedBox(
-                            height: 24, 
-                            width: 24, 
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
                         : Text(_isLoginMode ? 'INGRESAR' : 'REGISTRARSE'),
                   ),
@@ -213,15 +229,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextButton(
                   onPressed: () {
                     setState(() {
-                      _isLoginMode = !_isLoginMode; 
-                      _emailController.clear();    
+                      _isLoginMode = !_isLoginMode;
+                      _emailController.clear();
                       _passwordController.clear();
                     });
                   },
                   child: Text(
-                    _isLoginMode 
-                      ? '¿No tienes cuenta? Regístrate aquí' 
-                      : '¿Ya tienes cuenta? Ingresa aquí',
+                    _isLoginMode
+                        ? '¿No tienes cuenta? Regístrate aquí'
+                        : '¿Ya tienes cuenta? Ingresa aquí',
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ),

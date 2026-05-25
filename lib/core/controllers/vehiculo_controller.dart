@@ -8,11 +8,11 @@ import '../services/database_service.dart';
 
 class VehiculoController extends ChangeNotifier {
   final DatabaseService _dbService = DatabaseService();
-  
+
   List<Vehiculo> listaVehiculos = [];
   Vehiculo? vehiculoSeleccionado;
   EstadoDispositivo? estadoActual;
-  
+
   bool cargando = false;
   StreamSubscription? _suscripcionEstado;
 
@@ -26,7 +26,7 @@ class VehiculoController extends ChangeNotifier {
 
     try {
       listaVehiculos = await _dbService.obtenerVehiculosUsuario(uid);
-      
+
       if (listaVehiculos.isNotEmpty) {
         seleccionarVehiculo(listaVehiculos.first);
       }
@@ -40,38 +40,41 @@ class VehiculoController extends ChangeNotifier {
 
   void seleccionarVehiculo(Vehiculo vehiculo) {
     vehiculoSeleccionado = vehiculo;
-    
+
     _suscripcionEstado?.cancel();
-    
+
     _suscripcionEstado = _dbService
         .obtenerDispositivos(vehiculo.idDispositivo)
-        .listen((nuevoEstado) {
-      estadoActual = nuevoEstado;
-      notifyListeners(); 
-    }, onError: (error) {
-      debugPrint("Error en Stream de dispositivo: $error");
-    });
+        .listen(
+          (nuevoEstado) {
+            estadoActual = nuevoEstado;
+            notifyListeners();
+          },
+          onError: (error) {
+            debugPrint("Error en Stream de dispositivo: $error");
+          },
+        );
 
     notifyListeners();
   }
 
   Future<void> cambiarEstadoCortaCorriente(bool activar) async {
     if (vehiculoSeleccionado == null) return;
-    
+
     await _dbService.actualizarEstadoMando(
-      vehiculoSeleccionado!.idDispositivo, 
-      'cortaCorriente', 
-      activar
+      vehiculoSeleccionado!.idDispositivo,
+      'cortaCorriente',
+      activar,
     );
   }
 
   Future<void> cambiarEstadoProtocolo(bool activar) async {
     if (vehiculoSeleccionado == null) return;
-    
+
     await _dbService.actualizarEstadoMando(
-      vehiculoSeleccionado!.idDispositivo, 
-      'protocoloActivo', 
-      activar
+      vehiculoSeleccionado!.idDispositivo,
+      'protocoloActivo',
+      activar,
     );
   }
 
@@ -95,7 +98,7 @@ class VehiculoController extends ChangeNotifier {
     if (exito) {
       await cargarFlota(idUsuario);
     }
-    
+
     return exito;
   }
 
@@ -107,12 +110,11 @@ class VehiculoController extends ChangeNotifier {
 
   Future<void> cambiarEstadoHumo(bool nuevoEstado) async {
     if (vehiculoSeleccionado == null) return;
-    
+
     await _dbService.actualizarEstadoMando(
-      vehiculoSeleccionado!.idDispositivo, 
-      'humo', 
-      nuevoEstado
+      vehiculoSeleccionado!.idDispositivo,
+      'humo',
+      nuevoEstado,
     );
   }
-
 }

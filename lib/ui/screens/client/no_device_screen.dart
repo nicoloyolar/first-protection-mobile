@@ -22,7 +22,7 @@ class NoDeviceScreen extends StatelessWidget {
           return Opacity(
             opacity: value,
             child: Transform.translate(
-              offset: Offset(0, 30 * (1 - value)), 
+              offset: Offset(0, 30 * (1 - value)),
               child: child,
             ),
           );
@@ -40,7 +40,7 @@ class NoDeviceScreen extends StatelessWidget {
                       color: AppColors.primaryOrange.withOpacity(0.2),
                       blurRadius: 20,
                       spreadRadius: 5,
-                    )
+                    ),
                   ],
                 ),
                 child: const Icon(
@@ -50,7 +50,7 @@ class NoDeviceScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 40),
-              
+
               Text(
                 "¡BIENVENIDO A\nFIRST PROTECTION!",
                 textAlign: TextAlign.center,
@@ -62,7 +62,7 @@ class NoDeviceScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              
+
               const Text(
                 "Tu cuenta está activa, pero aún no tienes ningún sistema de seguridad vinculado.",
                 textAlign: TextAlign.center,
@@ -89,13 +89,15 @@ class NoDeviceScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const VincularVehiculoScreen()),
+                      MaterialPageRoute(
+                        builder: (context) => const VincularVehiculoScreen(),
+                      ),
                     );
                   },
                   child: const Text(
                     "VINCULAR MI DISPOSITIVO",
                     style: TextStyle(
-                      fontWeight: FontWeight.w900, 
+                      fontWeight: FontWeight.w900,
                       letterSpacing: 1.1,
                     ),
                   ),
@@ -116,7 +118,10 @@ class NoDeviceScreen extends StatelessWidget {
                   onPressed: () => _mostrarConfirmacionSalida(context),
                   child: const Text(
                     "CERRAR SESIÓN",
-                    style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w400),
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                 ),
               ),
@@ -136,31 +141,28 @@ class NoDeviceScreen extends StatelessWidget {
       pageBuilder: (context, anim1, anim2) {
         return FirstProtectionDialog(
           titulo: "¿Cerrar Sesión?",
-          mensaje: "Tendrás que volver a ingresar tus credenciales para acceder a tu protección.",
+          mensaje:
+              "Tendrás que volver a ingresar tus credenciales para acceder a tu protección.",
           textoConfirmar: "SALIR",
           onConfirmar: () async {
             try {
               await FirebaseAuth.instance.signOut();
-              
+
               if (context.mounted) {
-                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/', (route) => false);
               }
-            } catch (e) {
-            }
+            } catch (e) {}
           },
         );
       },
       transitionBuilder: (context, anim1, anim2, child) {
         return ScaleTransition(
-          scale: CurvedAnimation(
-            parent: anim1,
-            curve: Curves.easeOutBack, 
-          ),
+          scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
           child: child,
         );
       },
     );
   }
-
-  
 }

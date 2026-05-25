@@ -1,9 +1,14 @@
 import 'package:flutter/services.dart';
 
 class ChileanFormatters {
-  static TextInputFormatter patente = TextInputFormatter.withFunction((oldValue, newValue) {
-    String text = newValue.text.replaceAll(RegExp(r'[^A-Z0-9]'), '').toUpperCase();
-    
+  static TextInputFormatter patente = TextInputFormatter.withFunction((
+    oldValue,
+    newValue,
+  ) {
+    String text = newValue.text
+        .replaceAll(RegExp(r'[^A-Z0-9]'), '')
+        .toUpperCase();
+
     if (text.length > 6) text = text.substring(0, 6);
 
     String newText = "";
@@ -18,10 +23,15 @@ class ChileanFormatters {
     );
   });
 
-  static TextInputFormatter rut = TextInputFormatter.withFunction((oldValue, newValue) {
-    String text = newValue.text.replaceAll(RegExp(r'[^0-9kK]'), '').toUpperCase();
+  static TextInputFormatter rut = TextInputFormatter.withFunction((
+    oldValue,
+    newValue,
+  ) {
+    String text = newValue.text
+        .replaceAll(RegExp(r'[^0-9kK]'), '')
+        .toUpperCase();
     if (text.length > 9) text = text.substring(0, 9);
-    
+
     if (text.isEmpty) return newValue.copyWith(text: '');
 
     String formatted = "";
@@ -41,19 +51,22 @@ class ChileanFormatters {
 
   static String formatPatenteVisual(String? patente) {
     if (patente == null || patente.isEmpty) return "S/P";
-    
+
     String clean = patente.replaceAll(RegExp(r'[^A-Z0-9]'), '').toUpperCase();
-    
+
     if (clean.length == 6) {
       return "${clean.substring(0, 4)}-${clean.substring(4)}";
     }
-    return clean; 
+    return clean;
   }
 
-  static TextInputFormatter telefonoCl = TextInputFormatter.withFunction((oldValue, newValue) {
+  static TextInputFormatter telefonoCl = TextInputFormatter.withFunction((
+    oldValue,
+    newValue,
+  ) {
     String text = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (text.length > 8) text = text.substring(0, 8);
-    
+
     return TextEditingValue(
       text: text,
       selection: TextSelection.collapsed(offset: text.length),

@@ -21,19 +21,19 @@ class FirstProtectionDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.transparent, 
+      backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A), 
+          color: const Color(0xFF1A1A1A),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.05), width: 1), 
+          border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.5),
               blurRadius: 20,
               offset: const Offset(0, 10),
-            )
+            ),
           ],
         ),
         child: Column(
@@ -44,15 +44,17 @@ class FirstProtectionDialog extends StatelessWidget {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.03),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
               ),
               child: const Icon(
-                Icons.logout_rounded, 
-                color: AppColors.primaryOrange, 
-                size: 40
+                Icons.logout_rounded,
+                color: AppColors.primaryOrange,
+                size: 40,
               ),
             ),
-            
+
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
@@ -78,7 +80,7 @@ class FirstProtectionDialog extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  
+
                   Row(
                     children: [
                       Expanded(
@@ -102,7 +104,7 @@ class FirstProtectionDialog extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       Expanded(
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -121,7 +123,7 @@ class FirstProtectionDialog extends StatelessWidget {
                           child: Text(
                             textoConfirmar,
                             style: const TextStyle(
-                              fontWeight: FontWeight.w900, 
+                              fontWeight: FontWeight.w900,
                               fontSize: 13,
                             ),
                           ),
