@@ -274,6 +274,7 @@ def run(args: argparse.Namespace) -> None:
         if command:
             status, result, error_code, message = state.apply_command(command)
             command_id = command.get("commandId") or command.get("id")
+            print(f"[command] {command_id} target={command.get('target')} status={status}")
             client.post(
                 f"/api/v1/devices/{args.device_id}/commands/{command_id}/ack",
                 {

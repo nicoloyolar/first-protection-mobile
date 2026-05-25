@@ -47,7 +47,14 @@ python scripts/stm_simulator.py --scenario offline --dry-run
 
 ## Ejecutar Contra Una API Local
 
-Cuando exista backend local:
+Con la API local incluida en `functions/index.js`, primero levanta el servidor:
+
+```bash
+cd functions
+npm run serve:device-api
+```
+
+Luego, desde la raiz del proyecto:
 
 ```bash
 python scripts/stm_simulator.py ^
@@ -61,6 +68,15 @@ En PowerShell tambien puedes usar una sola linea:
 
 ```bash
 python scripts/stm_simulator.py --base-url http://localhost:5001 --device-id GPS-SIM001 --secret dev-secret --scenario drive
+```
+
+Para crear un comando pendiente de prueba:
+
+```powershell
+Invoke-RestMethod -Method Post `
+  -Uri "http://localhost:5001/api/v1/devices/GPS-SIM001/commands" `
+  -ContentType "application/json" `
+  -Body '{"target":"humo","value":true,"requestedBy":"local-admin","requestedByRole":"admin"}'
 ```
 
 ## Escenarios Soportados
@@ -97,4 +113,4 @@ hmac_sha256(json_body + timestamp, deviceSecret)
 
 ## Siguiente Paso
 
-Implementar una API local o Cloud Functions que responda a estos endpoints. Mientras eso no exista, usar `--dry-run` para validar payloads y escenarios.
+Conectar app movil y panel admin al modelo `device_commands` para que los botones creen comandos pendientes y muestren el ACK del dispositivo.

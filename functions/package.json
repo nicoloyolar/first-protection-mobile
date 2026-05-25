@@ -1,0 +1,17 @@
+{
+  "name": "first-protection-functions",
+  "description": "First Protection backend functions and local device API",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "serve:device-api": "node index.js",
+    "test:smoke": "node index.js --smoke-test"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.2"
+  }
+}

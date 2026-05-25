@@ -100,6 +100,7 @@ Documentacion tecnica:
 - [Contrato API para dispositivo](docs/device-api-contract.md)
 - [Plan de trabajo hardware](docs/hardware-roadmap.md)
 - [Simulador STM](docs/stm-simulator.md)
+- [Checklist de integracion](docs/integration-checklist.md)
 
 Resumen de responsabilidades:
 
@@ -112,6 +113,13 @@ Simulador rapido:
 
 ```bash
 python scripts/stm_simulator.py --scenario carjacking --dry-run
+```
+
+API local de dispositivo:
+
+```bash
+cd functions
+npm run serve:device-api
 ```
 
 ## Correr El Proyecto
