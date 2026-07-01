@@ -1,16 +1,12 @@
-// ignore_for_file: deprecated_member_use, use_build_context_synchronously
-
-import 'dart:async';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:first_protection/core/controllers/vehiculo_controller.dart';
 import 'package:first_protection/core/models/estado_dispositivo_model.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/mobile_login_screen.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/vincular_vehiculo_screen.dart';
-import 'package:first_protection/src/core/services/auth_service.dart';
-import 'package:first_protection/src/core/theme/app_colors.dart';
+import 'package:first_protection/src/apps/client_mobile/ui/widgets/security_slider.dart';
+import 'package:first_protection/core/services/auth_service.dart';
+import 'package:first_protection/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,79 +20,13 @@ class ClientHomeScreen extends StatefulWidget {
 }
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
-  StreamSubscription<Position>? _positionStream;
   GoogleMapController? _mapController;
-  static const bool _syncPhoneLocationToDevice = false;
 
   final String _mapStyle =
       '[{"elementType":"geometry","stylers":[{"color":"#212121"}]},{"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},{"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},{"featureType":"administrative","elementType":"geometry","stylers":[{"color":"#757575"}]},{"featureType":"poi","elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},{"featureType":"road","elementType":"geometry.fill","stylers":[{"color":"#2c2c2c"}]},{"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}]';
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _iniciarSimulacionRastreo();
-    });
-  }
-
-  void _iniciarSimulacionRastreo() async {
-    if (!_syncPhoneLocationToDevice) return;
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-
-    if (permission == LocationPermission.whileInUse ||
-        permission == LocationPermission.always) {
-      const locationSettings = LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10,
-      );
-
-      _positionStream =
-          Geolocator.getPositionStream(
-            locationSettings: locationSettings,
-          ).listen((Position position) {
-            if (!mounted) return;
-
-            try {
-              final vCtrl = Provider.of<VehiculoController>(
-                context,
-                listen: false,
-              );
-
-              if (vCtrl.vehiculoSeleccionado != null &&
-                  vCtrl.vehiculoSeleccionado!.idDispositivo.isNotEmpty) {
-                FirebaseDatabase.instance
-                    .ref()
-                    .child('dispositivos')
-                    .child(vCtrl.vehiculoSeleccionado!.idDispositivo)
-                    .update({
-                      'latitud': position.latitude,
-                      'longitud': position.longitude,
-                      'velocidad': position.speed * 3.6,
-                      'ultimaActualizacion': ServerValue.timestamp,
-                    });
-
-                _moverCamara(LatLng(position.latitude, position.longitude));
-              }
-            } catch (e) {
-              debugPrint("Error actualizando posición: $e");
-            }
-          });
-    }
-  }
-
-  void _moverCamara(LatLng pos) {
-    if (_mapController != null) {
-      _mapController!.animateCamera(CameraUpdate.newLatLng(pos));
-    }
-  }
-
-  @override
   void dispose() {
-    _positionStream?.cancel();
     _mapController?.dispose();
     super.dispose();
   }
@@ -109,13 +39,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   }
 
   void _handleLogout(BuildContext context) async {
-    await _positionStream?.cancel();
-
+    final navigator = Navigator.of(context);
     final authService = AuthService();
     await authService.logout();
 
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
+    navigator.pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
@@ -188,7 +117,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     border: Border.all(color: Colors.white10),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha:0.5),
                         blurRadius: 20,
                       ),
                     ],
@@ -198,10 +127,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       target: posicionVehiculo,
                       zoom: 16,
                     ),
-                    onMapCreated: (controller) {
-                      _mapController = controller;
-                      _mapController!.setMapStyle(_mapStyle);
-                    },
+                    style: _mapStyle,
+                    onMapCreated: (controller) => _mapController = controller,
                     myLocationEnabled: false,
                     myLocationButtonEnabled: false,
                     zoomControlsEnabled: false,
@@ -357,9 +284,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
+          color: Colors.white.withValues(alpha:0.03),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(color: Colors.white.withValues(alpha:0.05)),
         ),
         child: Column(
           children: [
@@ -402,11 +329,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         height: 75,
         decoration: BoxDecoration(
           color: isActive
-              ? activeColor.withOpacity(0.15)
-              : Colors.white.withOpacity(0.03),
+              ? activeColor.withValues(alpha:0.15)
+              : Colors.white.withValues(alpha:0.03),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isActive ? activeColor : Colors.white.withOpacity(0.05),
+            color: isActive ? activeColor : Colors.white.withValues(alpha:0.05),
           ),
         ),
         child: Column(
@@ -454,9 +381,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha:0.1),
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha:0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -495,13 +422,13 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     color: AppColors.backgroundBlack,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primaryOrange.withOpacity(0.15),
+                        color: AppColors.primaryOrange.withValues(alpha:0.15),
                         blurRadius: 20,
                         spreadRadius: 2,
                       ),
                     ],
                     border: Border.all(
-                      color: AppColors.primaryOrange.withOpacity(0.4),
+                      color: AppColors.primaryOrange.withValues(alpha:0.4),
                       width: 1.5,
                     ),
                   ),
@@ -561,6 +488,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                         final esSeleccionado =
                             v.idDispositivo ==
                             vCtrl.vehiculoSeleccionado?.idDispositivo;
+                        final esOnline = vCtrl.vehiculoEstaOnline(
+                          v.idDispositivo,
+                        );
 
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
@@ -568,11 +498,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(20),
                             color: esSeleccionado
-                                ? AppColors.primaryOrange.withOpacity(0.08)
-                                : Colors.white.withOpacity(0.02),
+                                ? AppColors.primaryOrange.withValues(alpha:0.08)
+                                : Colors.white.withValues(alpha:0.02),
                             border: Border.all(
                               color: esSeleccionado
-                                  ? AppColors.primaryOrange.withOpacity(0.5)
+                                  ? AppColors.primaryOrange.withValues(alpha:0.5)
                                   : Colors.white10,
                               width: 1,
                             ),
@@ -598,7 +528,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                     width: 10,
                                     height: 10,
                                     decoration: BoxDecoration(
-                                      color: Colors.greenAccent,
+                                      color: esOnline
+                                          ? Colors.greenAccent
+                                          : Colors.white24,
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                         color: const Color(0xFF0D0D0D),
@@ -606,9 +538,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.greenAccent.withOpacity(
-                                            0.5,
-                                          ),
+                                          color: esOnline
+                                              ? Colors.greenAccent.withValues(alpha:0.5)
+                                              : Colors.transparent,
                                           blurRadius: 4,
                                           spreadRadius: 1,
                                         ),
@@ -630,13 +562,17 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                 Icon(
                                   Icons.circle,
                                   size: 6,
-                                  color: Colors.greenAccent.withOpacity(0.5),
+                                  color: esOnline
+                                      ? Colors.greenAccent.withValues(alpha:0.5)
+                                      : Colors.white24,
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
-                                  "EN LÍNEA",
+                                  esOnline ? "EN LÍNEA" : "SIN SEÑAL",
                                   style: GoogleFonts.roboto(
-                                    color: Colors.greenAccent.withOpacity(0.5),
+                                    color: esOnline
+                                        ? Colors.greenAccent.withValues(alpha:0.5)
+                                        : Colors.white24,
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -714,137 +650,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class SecuritySlider extends StatefulWidget {
-  final String text;
-  final bool isActive;
-  final Future<void> Function() onFinished;
-
-  const SecuritySlider({
-    super.key,
-    required this.text,
-    required this.isActive,
-    required this.onFinished,
-  });
-
-  @override
-  State<SecuritySlider> createState() => _SecuritySliderState();
-}
-
-class _SecuritySliderState extends State<SecuritySlider> {
-  double _value = 0.0;
-  bool _isLoading = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 65,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          double maxWidth = constraints.maxWidth;
-          double thumbSize = 55.0;
-          double padding = 5.0;
-          double position = _value * (maxWidth - thumbSize - (padding * 2));
-
-          return Stack(
-            alignment: Alignment.centerLeft,
-            children: [
-              Center(
-                child: Opacity(
-                  opacity: (1.0 - (_value * 1.5)).clamp(0.0, 1.0),
-                  child: Text(
-                    _isLoading ? "PROCESANDO..." : widget.text,
-                    style: GoogleFonts.oswald(
-                      color: Colors.white.withOpacity(0.3),
-                      fontSize: 13,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 65,
-                  thumbShape: SliderComponentShape.noThumb,
-                  overlayShape: SliderComponentShape.noOverlay,
-                  activeTrackColor: Colors.transparent,
-                  inactiveTrackColor: Colors.transparent,
-                ),
-                child: Slider(
-                  value: _value,
-                  onChanged: _isLoading
-                      ? null
-                      : (val) {
-                          if (val > 0.1 && _value <= 0.1) {
-                            HapticFeedback.selectionClick();
-                          }
-                          setState(() => _value = val);
-                        },
-                  onChangeEnd: (val) async {
-                    if (val > 0.9) {
-                      HapticFeedback.heavyImpact();
-                      setState(() => _isLoading = true);
-                      await widget.onFinished();
-                      if (mounted) setState(() => _isLoading = false);
-                    }
-                    setState(() => _value = 0.0);
-                  },
-                ),
-              ),
-
-              Positioned(
-                left: padding + position,
-                child: Container(
-                  height: thumbSize,
-                  width: thumbSize,
-                  decoration: BoxDecoration(
-                    color: widget.isActive
-                        ? Colors.green
-                        : AppColors.primaryOrange,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color:
-                            (widget.isActive
-                                    ? Colors.green
-                                    : AppColors.primaryOrange)
-                                .withOpacity(0.3),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: _isLoading
-                      ? const Padding(
-                          padding: EdgeInsets.all(18),
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Icon(
-                          widget.isActive
-                              ? Icons.lock_open_rounded
-                              : Icons.power_settings_new_rounded,
-                          color: Colors.white,
-                          size: 26,
-                        ),
-                ),
-              ),
-            ],
-          );
-        },
       ),
     );
   }

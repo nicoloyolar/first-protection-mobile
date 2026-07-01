@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:first_protection/core/utils/formatters.dart';
 import 'package:first_protection/core/utils/vehicle_data.dart';
 import 'package:first_protection/core/widgets/custom_dialog.dart';
@@ -7,7 +5,7 @@ import 'package:first_protection/core/services/database_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:first_protection/core/theme/app_colors.dart';
 
 class DeviceInventoryScreen extends StatefulWidget {
   const DeviceInventoryScreen({super.key});
@@ -113,7 +111,7 @@ class _DeviceInventoryScreenState extends State<DeviceInventoryScreen> {
               height: 60,
               padding: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: Colors.white.withValues(alpha:0.03),
                 borderRadius: BorderRadius.circular(15),
                 border: Border.all(color: Colors.white10),
               ),
@@ -194,7 +192,8 @@ class _DeviceInventoryScreenState extends State<DeviceInventoryScreen> {
             ),
             child: DataTable(
               headingRowHeight: 70,
-              dataRowHeight: 85,
+              dataRowMinHeight: 85,
+              dataRowMaxHeight: 85,
               columns: _buildColumns(),
               rows: items.map((item) => _buildDataRow(item)).toList(),
             ),
@@ -239,7 +238,7 @@ class _DeviceInventoryScreenState extends State<DeviceInventoryScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primaryOrange.withOpacity(0.05),
+              color: AppColors.primaryOrange.withValues(alpha:0.05),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -274,13 +273,13 @@ class _DeviceInventoryScreenState extends State<DeviceInventoryScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: estado == "ACTIVO"
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.orange.withOpacity(0.1),
+                  ? Colors.green.withValues(alpha:0.1)
+                  : Colors.orange.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: estado == "ACTIVO"
-                    ? Colors.green.withOpacity(0.5)
-                    : Colors.orange.withOpacity(0.5),
+                    ? Colors.green.withValues(alpha:0.5)
+                    : Colors.orange.withValues(alpha:0.5),
               ),
             ),
             child: Text(
@@ -313,7 +312,10 @@ class _DeviceInventoryScreenState extends State<DeviceInventoryScreen> {
                   color: Colors.redAccent,
                   size: 24,
                 ),
-                onPressed: () => _confirmDelete(item['id']),
+                onPressed: () => _confirmDelete(
+                item['id'],
+                item['idPropietario']?.toString(),
+              ),
               ),
             ],
           ),
@@ -780,7 +782,7 @@ class _DeviceInventoryScreenState extends State<DeviceInventoryScreen> {
             size: 22,
           ),
           filled: true,
-          fillColor: Colors.white.withOpacity(0.02),
+          fillColor: Colors.white.withValues(alpha:0.02),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Colors.white10),
@@ -797,7 +799,7 @@ class _DeviceInventoryScreenState extends State<DeviceInventoryScreen> {
     );
   }
 
-  void _confirmDelete(String id) {
+  void _confirmDelete(String id, String? idPropietario) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -824,7 +826,7 @@ class _DeviceInventoryScreenState extends State<DeviceInventoryScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              _databaseService.eliminarDispositivo(id);
+              _databaseService.eliminarDispositivo(id, idPropietario: idPropietario);
               Navigator.pop(context);
               CustomDialogs.showModernStatus(
                 context,
@@ -886,7 +888,7 @@ class _DeviceInventoryScreenState extends State<DeviceInventoryScreen> {
             size: 22,
           ),
           filled: true,
-          fillColor: Colors.white.withOpacity(0.02),
+          fillColor: Colors.white.withValues(alpha:0.02),
           disabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Colors.white10),

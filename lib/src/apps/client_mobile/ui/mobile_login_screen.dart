@@ -1,10 +1,8 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:first_protection/ui/screens/home_router.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/services/auth_service.dart';
+import 'package:first_protection/core/theme/app_colors.dart';
+import 'package:first_protection/core/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -122,13 +120,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: AppColors.backgroundBlack,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primaryOrange.withOpacity(0.2),
+                        color: AppColors.primaryOrange.withValues(alpha:0.2),
                         blurRadius: 20,
                         spreadRadius: 5,
                       ),
                     ],
                     border: Border.all(
-                      color: AppColors.primaryOrange.withOpacity(0.5),
+                      color: AppColors.primaryOrange.withValues(alpha:0.5),
                       width: 2,
                     ),
                   ),

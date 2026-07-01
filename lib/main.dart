@@ -7,7 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'src/core/theme/app_colors.dart';
+import 'core/theme/app_colors.dart';
 import 'src/apps/client_mobile/ui/mobile_login_screen.dart';
 import 'src/apps/admin_web/ui/admin_access_gate.dart';
 

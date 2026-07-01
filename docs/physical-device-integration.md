@@ -148,9 +148,14 @@ El firmware debe manejar:
 - Numeros de secuencia para evitar eventos duplicados.
 - Ultimo comando procesado para evitar reejecuciones peligrosas.
 
+## Componentes Confirmados (2026-07-01)
+
+- GPS: modulo GY-GPSV3-NEO (chip u-blox NEO), UART.
+- Pantalla local de estado/debug: OLED 1.3" 128x64 blanco/azul, SPI o I2C. Se recomienda I2C de 4 pines para no competir por GPIO con GPS y actuadores. No reemplaza ninguna entrada fisica listada arriba; es solo para diagnostico en banco.
+
 ## Pendientes De Decision
 
-- Red disponible para el STM: LTE, NB-IoT, WiFi, LoRa u otra.
+- Red disponible para el STM: LTE, NB-IoT, WiFi, LoRa u otra. **Sin definir. Aun no hay modulo SIM/celular** — bloqueo principal antes de iniciar Fase 3 (Firmware MVP) del roadmap, ya que WiFi y LoRa no son viables para un vehiculo en movimiento fuera de una red conocida.
 - Protocolo principal: HTTPS pull, HTTPS push, MQTT o WebSocket.
 - Quien decide reglas automaticas: firmware, backend o mixto.
 - Politica exacta del corta corriente por seguridad electrica/legal.

@@ -1,6 +1,4 @@
-// ignore_for_file: deprecated_member_use
-
-import 'package:first_protection/src/core/theme/app_colors.dart';
+import 'package:first_protection/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 enum NotificationType { success, error }
@@ -95,11 +93,11 @@ class _NotificationWidgetState extends State<_NotificationWidget>
 
     switch (widget.type) {
       case NotificationType.success:
-        backgroundColor = AppColors.primaryOrange.withOpacity(0.95);
+        backgroundColor = AppColors.primaryOrange.withValues(alpha: 0.95);
         icon = Icons.check_circle_outline;
         break;
       case NotificationType.error:
-        backgroundColor = Colors.redAccent.withOpacity(0.95);
+        backgroundColor = Colors.redAccent.withValues(alpha: 0.95);
         icon = Icons.error_outline;
         break;
     }
@@ -128,7 +126,7 @@ class _NotificationWidgetState extends State<_NotificationWidget>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),

@@ -1,10 +1,8 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:first_protection/src/apps/admin_web/ui/admin_dashboard_web.dart';
-import 'package:first_protection/src/core/services/auth_service.dart';
+import 'package:first_protection/core/services/auth_service.dart';
+import 'package:first_protection/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_colors.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   final String? initialError;
@@ -88,12 +86,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               width: 420,
               padding: const EdgeInsets.all(50),
               decoration: BoxDecoration(
-                color: AppColors.surfaceDark.withOpacity(0.8),
+                color: AppColors.surfaceDark.withValues(alpha:0.8),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                border: Border.all(color: Colors.white.withValues(alpha:0.05)),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primaryOrange.withOpacity(0.05),
+                    color: AppColors.primaryOrange.withValues(alpha:0.05),
                     blurRadius: 40,
                     spreadRadius: 5,
                   ),
@@ -110,13 +108,13 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       color: AppColors.backgroundBlack,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primaryOrange.withOpacity(0.2),
+                          color: AppColors.primaryOrange.withValues(alpha:0.2),
                           blurRadius: 20,
                           spreadRadius: 5,
                         ),
                       ],
                       border: Border.all(
-                        color: AppColors.primaryOrange.withOpacity(0.5),
+                        color: AppColors.primaryOrange.withValues(alpha:0.5),
                         width: 2,
                       ),
                     ),
@@ -154,10 +152,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.redAccent.withOpacity(0.12),
+                        color: Colors.redAccent.withValues(alpha:0.12),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: Colors.redAccent.withOpacity(0.35),
+                          color: Colors.redAccent.withValues(alpha:0.35),
                         ),
                       ),
                       child: Text(
@@ -199,7 +197,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primaryOrange.withOpacity(0.3),
+                            color: AppColors.primaryOrange.withValues(alpha:0.3),
                             blurRadius: 15,
                             offset: const Offset(0, 8),
                           ),
@@ -251,7 +249,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
           children: [
             Icon(
               icon,
-              color: AppColors.primaryOrange.withOpacity(0.7),
+              color: AppColors.primaryOrange.withValues(alpha:0.7),
               size: 18,
             ),
             const SizedBox(width: 8),

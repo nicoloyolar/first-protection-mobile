@@ -1,6 +1,4 @@
-// ignore_for_file: deprecated_member_use
-
-import 'package:first_protection/src/core/theme/app_colors.dart';
+import 'package:first_protection/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -27,10 +25,10 @@ class FirstProtectionDialog extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF1A1A1A),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -43,7 +41,7 @@ class FirstProtectionDialog extends StatelessWidget {
               height: 80,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: Colors.white.withValues(alpha: 0.03),
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(24),
                 ),
@@ -54,7 +52,6 @@ class FirstProtectionDialog extends StatelessWidget {
                 size: 40,
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
@@ -80,13 +77,12 @@ class FirstProtectionDialog extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-
                   Row(
                     children: [
                       Expanded(
                         child: TextButton(
                           style: TextButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.05),
+                            backgroundColor: Colors.white.withValues(alpha: 0.05),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -104,7 +100,6 @@ class FirstProtectionDialog extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-
                       Expanded(
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(

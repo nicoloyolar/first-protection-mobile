@@ -26,6 +26,12 @@ Entregables:
 - Estados del firmware.
 - Contrato API versionado.
 
+### Estado Actual (2026-07-01)
+
+- GPS definido: modulo GY-GPSV3-NEO (chip u-blox NEO), UART.
+- Pantalla local definida: OLED 1.3" 128x64 blanco/azul. Usar interfaz I2C (4 pines) en vez de SPI (7 pines) para ahorrar GPIO, dado que ya se ocupan pines en UART (GPS) y salidas digitales (actuadores).
+- Modem/conectividad: sin definir. No hay modulo SIM/celular todavia. Este es el bloqueo principal de esta fase: sin conectividad resuelta no se puede avanzar a Fase 3, donde "levantar conectividad" es el primer paso del firmware MVP.
+
 ## Fase 1: Backend De Integracion
 
 Estado esperado: backend listo antes de tener hardware final.

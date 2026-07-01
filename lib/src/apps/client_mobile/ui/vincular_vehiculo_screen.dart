@@ -1,9 +1,7 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:math'; // <--- 1. IMPORTANTE PARA GENERAR EL TOKEN
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:first_protection/src/core/theme/app_colors.dart';
-import 'package:first_protection/src/ui/widgets/custom_notification.dart';
+import 'package:first_protection/core/theme/app_colors.dart';
+import 'package:first_protection/core/widgets/custom_notification.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -243,10 +241,10 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
       child: Container(
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          color: AppColors.primaryOrange.withOpacity(0.1),
+          color: AppColors.primaryOrange.withValues(alpha:0.1),
           shape: BoxShape.circle,
           border: Border.all(
-            color: AppColors.primaryOrange.withOpacity(0.2),
+            color: AppColors.primaryOrange.withValues(alpha:0.2),
             width: 1,
           ),
         ),
@@ -310,11 +308,11 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
             : null,
         filled: true,
         fillColor: isPrimary
-            ? Colors.white.withOpacity(0.05)
+            ? Colors.white.withValues(alpha:0.05)
             : Colors.transparent,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha:0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -343,7 +341,7 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryOrange.withOpacity(0.2),
+            color: AppColors.primaryOrange.withValues(alpha:0.2),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),

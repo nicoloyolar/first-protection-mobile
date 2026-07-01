@@ -74,8 +74,9 @@ Este checklist mantiene el estado del MVP, backend y futuro dispositivo STM. Act
 ## Firmware STM Futuro
 
 - [ ] Definir placa STM final.
-- [ ] Definir modem/conectividad.
-- [ ] Definir modulo GPS.
+- [ ] Definir modem/conectividad. **CRITICO - sin SIM/modulo celular aun, bloquea Fase 3 (Firmware MVP).**
+- [x] Definir modulo GPS. (GY-GPSV3-NEO, chip u-blox NEO, UART)
+- [x] Definir pantalla local de estado/debug. (OLED 1.3" 128x64 blanco/azul, usar I2C de 4 pines en vez de SPI de 7 para ahorrar GPIO)
 - [ ] Definir circuito de sirena.
 - [ ] Definir circuito de humo.
 - [ ] Definir circuito de corta corriente.
@@ -121,3 +122,12 @@ Invoke-RestMethod -Method Post `
 ## Siguiente Hito Recomendado
 
 Conectar panel admin y app movil al modelo `device_commands` para que los botones no alteren actuadores directamente, sino que creen comandos pendientes y esperen ACK del dispositivo.
+
+## Notas De Hardware (2026-07-01)
+
+Componentes confirmados por el equipo de hardware:
+
+- GPS: modulo GY-GPSV3-NEO (chip u-blox NEO), comunicacion UART.
+- Pantalla de estado/debug: OLED 1.3" 128x64 blanco/azul, SPI o I2C. Se recomienda I2C (4 pines) para liberar GPIO frente a UART del GPS y las salidas de actuadores.
+
+Pendiente critico: no hay modulo SIM/celular definido todavia. Sin esto el STM no puede reportar telemetria ni recibir comandos fuera de una red WiFi conocida, lo que bloquea el inicio de la Fase 3 (Firmware MVP) del roadmap, ya que "levantar conectividad" es el primer paso antes de leer GPS o enviar heartbeat. Ver `docs/hardware-roadmap.md` y `docs/physical-device-integration.md`.

@@ -31,18 +31,23 @@ class DatabaseService {
 
       if (!snapshot.exists) return [];
 
-      List<Vehiculo> misVehiculos = [];
       final mapIds = snapshot.value as Map<dynamic, dynamic>;
 
-      for (var idVehiculo in mapIds.keys) {
-        final vehicleSnap = await _db.child('vehicles_meta/$idVehiculo').get();
-        if (vehicleSnap.exists) {
-          final data = vehicleSnap.value as Map<dynamic, dynamic>;
-          data['idVehiculo'] = idVehiculo;
-          misVehiculos.add(Vehiculo.fromMap(data));
-        }
-      }
-      return misVehiculos;
+      final vehiculos = await Future.wait(
+        mapIds.keys.map((idVehiculo) async {
+          final vehicleSnap = await _db
+              .child('vehicles_meta/$idVehiculo')
+              .get();
+          if (vehicleSnap.exists) {
+            final data = vehicleSnap.value as Map<dynamic, dynamic>;
+            data['idVehiculo'] = idVehiculo;
+            return Vehiculo.fromMap(data);
+          }
+          return null;
+        }),
+      );
+
+      return vehiculos.nonNulls.toList();
     } catch (e) {
       throw Exception('No se pudo cargar la flota del usuario: $e');
     }
@@ -323,11 +328,35 @@ class DatabaseService {
     }
   }
 
-  Future<void> eliminarDispositivo(String idDispositivo) async {
+  Future<void> eliminarDispositivo(
+    String idDispositivo, {
+    String? idPropietario,
+  }) async {
     await _db.update({
       'dispositivos/$idDispositivo': null,
       'vehicles_meta/$idDispositivo': null,
+      if (idPropietario != null && idPropietario.isNotEmpty)
+        'usuarios/$idPropietario/mis_vehiculos/$idDispositivo': null,
+      'device_commands/$idDispositivo': null,
+      'device_telemetry/$idDispositivo': null,
+      'device_events/$idDispositivo': null,
     });
+  }
+
+  Future<Map<String, bool>> obtenerEstadoOnlineDispositivos(
+    List<String> ids,
+  ) async {
+    final threshold =
+        DateTime.now().millisecondsSinceEpoch - (5 * 60 * 1000);
+    final entries = await Future.wait(
+      ids.map((id) async {
+        final snap =
+            await _db.child('dispositivos/$id/ultimaActualizacion').get();
+        final lastSeen = snap.value is num ? (snap.value as num).toInt() : 0;
+        return MapEntry(id, lastSeen > threshold);
+      }),
+    );
+    return Map.fromEntries(entries);
   }
 
   static double _asDouble(dynamic value) {

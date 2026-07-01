@@ -1,9 +1,7 @@
-// ignore_for_file: deprecated_member_use, empty_catches
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/vincular_vehiculo_screen.dart';
-import 'package:first_protection/src/core/theme/app_colors.dart';
-import 'package:first_protection/src/ui/widgets/custom_dialog.dart';
+import 'package:first_protection/core/theme/app_colors.dart';
+import 'package:first_protection/core/widgets/first_protection_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -37,7 +35,7 @@ class NoDeviceScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primaryOrange.withOpacity(0.2),
+                      color: AppColors.primaryOrange.withValues(alpha:0.2),
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),
@@ -153,7 +151,9 @@ class NoDeviceScreen extends StatelessWidget {
                   context,
                 ).pushNamedAndRemoveUntil('/', (route) => false);
               }
-            } catch (e) {}
+            } catch (e) {
+              debugPrint('Error al cerrar sesión: $e');
+            }
           },
         );
       },

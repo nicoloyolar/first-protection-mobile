@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
@@ -18,13 +16,13 @@ class CustomDialogs {
       builder: (context) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: AlertDialog(
-          backgroundColor: const Color(0xFF1a1a1a).withOpacity(0.9),
+          backgroundColor: const Color(0xFF1a1a1a).withValues(alpha:0.9),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(25),
             side: BorderSide(
               color: isError
-                  ? Colors.redAccent.withOpacity(0.4)
-                  : const Color(0xFFFF6B00).withOpacity(0.4),
+                  ? Colors.redAccent.withValues(alpha:0.4)
+                  : const Color(0xFFFF6B00).withValues(alpha:0.4),
             ),
           ),
           content: Column(
@@ -37,8 +35,8 @@ class CustomDialogs {
                   boxShadow: [
                     BoxShadow(
                       color: isError
-                          ? Colors.redAccent.withOpacity(0.2)
-                          : const Color(0xFFFF6B00).withOpacity(0.2),
+                          ? Colors.redAccent.withValues(alpha:0.2)
+                          : const Color(0xFFFF6B00).withValues(alpha:0.2),
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),

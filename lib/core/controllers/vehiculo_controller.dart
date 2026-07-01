@@ -1,5 +1,3 @@
-// ignore_for_file: empty_catches
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/vehiculo_model.dart';
@@ -15,8 +13,19 @@ class VehiculoController extends ChangeNotifier {
 
   bool cargando = false;
   StreamSubscription? _suscripcionEstado;
+  Map<String, bool> _onlineStatus = {};
 
   bool get tieneVehiculos => listaVehiculos.isNotEmpty;
+
+  bool vehiculoEstaOnline(String idDispositivo) {
+    if (vehiculoSeleccionado?.idDispositivo == idDispositivo &&
+        estadoActual != null) {
+      final threshold =
+          DateTime.now().millisecondsSinceEpoch - (5 * 60 * 1000);
+      return estadoActual!.ultimaActualizacion > threshold;
+    }
+    return _onlineStatus[idDispositivo] ?? false;
+  }
 
   Future<void> cargarFlota(String uid) async {
     if (cargando) return;
@@ -28,7 +37,13 @@ class VehiculoController extends ChangeNotifier {
       listaVehiculos = await _dbService.obtenerVehiculosUsuario(uid);
 
       if (listaVehiculos.isNotEmpty) {
+        final ids = listaVehiculos.map((v) => v.idDispositivo).toList();
+        _onlineStatus = await _dbService.obtenerEstadoOnlineDispositivos(ids);
         seleccionarVehiculo(listaVehiculos.first);
+      } else {
+        vehiculoSeleccionado = null;
+        estadoActual = null;
+        await _suscripcionEstado?.cancel();
       }
     } catch (e) {
       debugPrint("Error al cargar flota: $e");
@@ -39,7 +54,12 @@ class VehiculoController extends ChangeNotifier {
   }
 
   void seleccionarVehiculo(Vehiculo vehiculo) {
+    if (vehiculoSeleccionado?.idDispositivo == vehiculo.idDispositivo) {
+      return;
+    }
+
     vehiculoSeleccionado = vehiculo;
+    estadoActual = null;
 
     _suscripcionEstado?.cancel();
 
@@ -47,6 +67,7 @@ class VehiculoController extends ChangeNotifier {
         .obtenerDispositivos(vehiculo.idDispositivo)
         .listen(
           (nuevoEstado) {
+            if (estadoActual == nuevoEstado) return;
             estadoActual = nuevoEstado;
             notifyListeners();
           },

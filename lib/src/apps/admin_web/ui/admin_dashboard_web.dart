@@ -1,11 +1,9 @@
-// ignore_for_file: deprecated_member_use, unused_field, empty_catches, curly_braces_in_flow_control_structures
-
-import 'dart:async';
-import 'package:first_protection/core/services/database_service.dart';
+import 'package:first_protection/src/apps/admin_web/controllers/admin_dashboard_controller.dart';
+import 'package:first_protection/src/apps/admin_web/models/admin_device_view_data.dart';
 import 'package:first_protection/src/apps/admin_web/ui/admin_web_login_screen.dart';
 import 'package:first_protection/src/apps/admin_web/ui/device_inventory_screen.dart';
-import 'package:first_protection/src/core/services/auth_service.dart';
-import 'package:first_protection/src/core/theme/app_colors.dart';
+import 'package:first_protection/core/services/auth_service.dart';
+import 'package:first_protection/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -19,23 +17,10 @@ class AdminDashboardWeb extends StatefulWidget {
 
 class _AdminDashboardWebState extends State<AdminDashboardWeb> {
   GoogleMapController? _mapController;
-  final DatabaseService _databaseService = DatabaseService();
   final AuthService _authService = AuthService();
-  Map<String, dynamic>? _vehiculoSeleccionado;
-  List<Map<String, dynamic>> _listaVehiculos = [];
-  bool _isFollowing = false;
-  Set<Marker> _markers = {};
-  StreamSubscription<List<Map<String, dynamic>>>? _usuariosSubscription;
+  late final AdminDashboardController _dashboardController;
 
-  String _searchQuery = "";
-  String _filtroEstado = "TODOS";
   int _activeTab = 0;
-
-  final _nombreController = TextEditingController();
-  final _rutController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _telefonoController = TextEditingController();
-  final _domicilioController = TextEditingController();
 
   static const CameraPosition _kInitialPosition = CameraPosition(
     target: LatLng(-36.82699, -73.04977),
@@ -45,118 +30,46 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
   @override
   void initState() {
     super.initState();
-    _escucharUsuarios();
+    _dashboardController = AdminDashboardController()
+      ..addListener(_handleDashboardChanged)
+      ..start();
   }
 
   @override
   void dispose() {
-    _usuariosSubscription?.cancel();
-    _nombreController.dispose();
-    _rutController.dispose();
-    _emailController.dispose();
-    _telefonoController.dispose();
-    _domicilioController.dispose();
+    _dashboardController
+      ..removeListener(_handleDashboardChanged)
+      ..dispose();
     super.dispose();
   }
 
-  void _escucharUsuarios() {
-    _usuariosSubscription = _databaseService.escucharDispositivosAdmin().listen(
-      (devices) {
-        try {
-          if (devices.isEmpty) {
-            if (mounted) setState(() => _listaVehiculos = []);
-            return;
-          }
+  void _handleDashboardChanged() {
+    if (!mounted) return;
+    setState(() {});
 
-          Set<Marker> nuevosMarkers = {};
-          List<Map<String, dynamic>> nuevaLista = [];
-
-          for (final info in devices) {
-            final String deviceId = info['id'].toString();
-            final double lat = info['latitud'] as double? ?? 0;
-            final double lng = info['longitud'] as double? ?? 0;
-
-            final vData = Map<String, dynamic>.from(info);
-            vData['id'] = deviceId;
-            vData['latitud'] = lat;
-            vData['longitud'] = lng;
-            nuevaLista.add(vData);
-
-            if (lat != 0 && lng != 0) {
-              final position = LatLng(lat, lng);
-              if (_isFollowing && _vehiculoSeleccionado?['id'] == deviceId) {
-                _mapController?.animateCamera(CameraUpdate.newLatLng(position));
-              }
-              nuevosMarkers.add(
-                Marker(
-                  markerId: MarkerId(deviceId),
-                  position: position,
-                  icon: BitmapDescriptor.defaultMarkerWithHue(
-                    info['humo'] == true || info['protocoloActivo'] == true
-                        ? BitmapDescriptor.hueRed
-                        : BitmapDescriptor.hueOrange,
-                  ),
-                  onTap: () => _seleccionarVehiculo(vData),
-                ),
-              );
-            }
-          }
-
-          if (mounted)
-            setState(() {
-              _markers = nuevosMarkers;
-              _listaVehiculos = nuevaLista;
-            });
-        } catch (e) {
-          debugPrint("Error en Dashboard: $e");
-        }
-      },
-    );
+    final selectedDevice = _dashboardController.selectedDevice;
+    if (_dashboardController.isFollowing && selectedDevice?.isOnline == true) {
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLng(selectedDevice!.position),
+      );
+    }
   }
 
-  void _seleccionarVehiculo(Map<String, dynamic> vData) {
-    setState(() {
-      _vehiculoSeleccionado = vData;
-      _isFollowing = true;
-    });
-    if (vData['latitud'] != null && vData['longitud'] != null) {
+  void _seleccionarVehiculo(AdminDeviceViewData vData) {
+    _dashboardController.selectDevice(vData);
+    setState(() => _activeTab = 0);
+    if (vData.isOnline) {
       _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(
-          LatLng(vData['latitud'], vData['longitud']),
-          16,
-        ),
+        CameraUpdate.newLatLngZoom(vData.position, 16),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final listaFiltrada = _listaVehiculos.where((v) {
-      final matchesSearch =
-          (v['alias']?.toString().toLowerCase() ?? "").contains(
-            _searchQuery.toLowerCase(),
-          ) ||
-          (v['patente']?.toString().toLowerCase() ?? "").contains(
-            _searchQuery.toLowerCase(),
-          );
-      bool matchesStatus = true;
-      if (_filtroEstado == "ALERTA") {
-        matchesStatus = (v['humo'] == true || v['protocoloActivo'] == true);
-      } else if (_filtroEstado == "ONLINE")
-        matchesStatus = (v['latitud'] != null);
-      return matchesSearch && matchesStatus;
-    }).toList();
-
-    Map<String, dynamic>? vehiculoActualizado;
-    if (_vehiculoSeleccionado != null) {
-      try {
-        vehiculoActualizado = _listaVehiculos.firstWhere(
-          (v) => v['id'].toString() == _vehiculoSeleccionado!['id'].toString(),
-        );
-      } catch (e) {
-        vehiculoActualizado = _vehiculoSeleccionado;
-      }
-    }
+    final listaFiltrada = _dashboardController.filteredDevices;
+    final vehiculoActualizado = _dashboardController.selectedDevice;
+    final markers = _buildMarkers(_dashboardController.devices);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0a0a0a),
@@ -169,7 +82,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
               children: [
                 _buildSidebarHeader(),
                 Expanded(
-                  child: _listaVehiculos.isEmpty
+                  child: _dashboardController.devices.isEmpty
                       ? _buildEmptyState(
                           message: "CONECTANDO CON EL SISTEMA...",
                           icon: Icons.sensors_off,
@@ -204,7 +117,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                     child: GoogleMap(
                       initialCameraPosition: _kInitialPosition,
                       onMapCreated: (controller) => _mapController = controller,
-                      markers: _markers,
+                      markers: markers,
                       zoomControlsEnabled: false,
                     ),
                   ),
@@ -213,7 +126,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                   Positioned(
                     top: 40,
                     right: 40,
-                    child: _buildPremiumPanel(vehiculoActualizado),
+                    child: _buildPremiumPanel(vehiculoActualizado.toMap()),
                   ),
               ],
             ),
@@ -223,10 +136,21 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     );
   }
 
+  Set<Marker> _buildMarkers(List<AdminDeviceViewData> devices) {
+    return devices.where((device) => device.isOnline).map((device) {
+      return Marker(
+        markerId: MarkerId(device.id),
+        position: device.position,
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+          device.isAlert ? BitmapDescriptor.hueRed : BitmapDescriptor.hueOrange,
+        ),
+        onTap: () => _seleccionarVehiculo(device),
+      );
+    }).toSet();
+  }
+
   Widget _buildSidebarHeader() {
-    final int alertas = _listaVehiculos
-        .where((v) => v['humo'] == true || v['protocoloActivo'] == true)
-        .length;
+    final int alertas = _dashboardController.alertCount;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(25, 40, 25, 20),
@@ -277,7 +201,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                         size: 22,
                       ),
                       tooltip: "Gestión de Inventario",
-                      hoverColor: AppColors.primaryOrange.withOpacity(0.1),
+                      hoverColor: AppColors.primaryOrange.withValues(alpha:0.1),
                       splashRadius: 24,
                     ),
                   ),
@@ -291,7 +215,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                         size: 22,
                       ),
                       tooltip: "Cerrar sesión",
-                      hoverColor: AppColors.primaryOrange.withOpacity(0.1),
+                      hoverColor: AppColors.primaryOrange.withValues(alpha:0.1),
                       splashRadius: 24,
                     ),
                   ),
@@ -305,13 +229,13 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
           Container(
             height: 45,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.03),
+              color: Colors.white.withValues(alpha:0.03),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white10),
             ),
             child: Center(
               child: TextField(
-                onChanged: (val) => setState(() => _searchQuery = val),
+                onChanged: _dashboardController.setSearchQuery,
                 textAlignVertical: TextAlignVertical.center,
                 style: const TextStyle(color: Colors.white, fontSize: 13),
                 decoration: InputDecoration(
@@ -337,11 +261,11 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
             physics: const BouncingScrollPhysics(),
             child: Row(
               children: [
-                _filterChip("TODOS", _listaVehiculos.length),
+                _filterChip("TODOS", _dashboardController.devices.length),
                 _filterChip("ALERTA", alertas, isCritical: true),
                 _filterChip(
                   "ONLINE",
-                  _listaVehiculos.where((v) => v['latitud'] != null).length,
+                  _dashboardController.onlineCount,
                 ),
               ],
             ),
@@ -352,17 +276,17 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
   }
 
   Widget _filterChip(String label, int count, {bool isCritical = false}) {
-    bool isSelected = _filtroEstado == label;
+    bool isSelected = _dashboardController.statusFilter == label;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: InkWell(
-        onTap: () => setState(() => _filtroEstado = label),
+        onTap: () => _dashboardController.setStatusFilter(label),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: isSelected
                 ? AppColors.primaryOrange
-                : Colors.white.withOpacity(0.03),
+                : Colors.white.withValues(alpha:0.03),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -388,11 +312,11 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
       constraints: const BoxConstraints(maxHeight: 620),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414).withOpacity(0.98),
+        color: const Color(0xFF141414).withValues(alpha:0.98),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primaryOrange.withOpacity(0.5)),
+        border: Border.all(color: AppColors.primaryOrange.withValues(alpha:0.5)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20),
+          BoxShadow(color: Colors.black.withValues(alpha:0.5), blurRadius: 20),
         ],
       ),
       child: Column(
@@ -425,7 +349,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
               ),
               IconButton(
                 icon: const Icon(Icons.close, color: Colors.white38, size: 20),
-                onPressed: () => setState(() => _vehiculoSeleccionado = null),
+                onPressed: _dashboardController.clearSelection,
               ),
             ],
           ),
@@ -540,20 +464,24 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
           width: double.infinity,
           height: 45,
           child: ElevatedButton.icon(
-            onPressed: () => setState(() => _isFollowing = !_isFollowing),
+            onPressed: _dashboardController.toggleFollowing,
             icon: Icon(
-              _isFollowing ? Icons.gps_fixed : Icons.gps_not_fixed,
+              _dashboardController.isFollowing
+                  ? Icons.gps_fixed
+                  : Icons.gps_not_fixed,
               size: 16,
             ),
             label: Text(
-              _isFollowing ? "SIGUIENDO..." : "RASTREAR",
+              _dashboardController.isFollowing ? "SIGUIENDO..." : "RASTREAR",
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _isFollowing
+              backgroundColor: _dashboardController.isFollowing
                   ? AppColors.primaryOrange
                   : Colors.white10,
-              foregroundColor: _isFollowing ? Colors.black : Colors.white,
+              foregroundColor: _dashboardController.isFollowing
+                  ? Colors.black
+                  : Colors.white,
             ),
           ),
         ),
@@ -611,7 +539,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
   Widget _readOnlyDetail(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, color: AppColors.primaryOrange.withOpacity(0.5), size: 16),
+        Icon(icon, color: AppColors.primaryOrange.withValues(alpha:0.5), size: 16),
         const SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -648,8 +576,8 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: isActive
-              ? activeColor.withOpacity(0.1)
-              : Colors.white.withOpacity(0.02),
+              ? activeColor.withValues(alpha:0.1)
+              : Colors.white.withValues(alpha:0.02),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: isActive ? activeColor : Colors.white10),
         ),
@@ -717,17 +645,17 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     );
   }
 
-  Widget _buildPremiumVehicleCard(Map<String, dynamic> v) {
-    final bool isSel = _vehiculoSeleccionado?['id'] == v['id'];
+  Widget _buildPremiumVehicleCard(AdminDeviceViewData device) {
+    final bool isSel = _dashboardController.selectedDevice?.id == device.id;
     return GestureDetector(
-      onTap: () => _seleccionarVehiculo(v),
+      onTap: () => _seleccionarVehiculo(device),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSel
-              ? AppColors.primaryOrange.withOpacity(0.1)
-              : Colors.white.withOpacity(0.03),
+              ? AppColors.primaryOrange.withValues(alpha:0.1)
+              : Colors.white.withValues(alpha:0.03),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSel ? AppColors.primaryOrange : Colors.white10,
@@ -737,7 +665,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              v['alias'] ?? "Unidad",
+              device.alias,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -745,7 +673,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
               ),
             ),
             Text(
-              v['patente'] ?? "S/P",
+              device.patente,
               style: const TextStyle(color: Colors.white38, fontSize: 10),
             ),
           ],
@@ -800,10 +728,10 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
 
     if (confirmed != true) return;
 
-    await _databaseService.actualizarComandoDispositivo(
-      idDispositivo: info['id'].toString(),
-      campo: field,
-      valor: value,
+    await _dashboardController.updateDeviceCommand(
+      deviceId: info['id'].toString(),
+      field: field,
+      value: value,
       actorRole: 'admin',
     );
   }

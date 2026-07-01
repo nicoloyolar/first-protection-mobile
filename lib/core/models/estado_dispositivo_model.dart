@@ -44,6 +44,37 @@ class EstadoDispositivo {
     );
   }
 
+  @override
+  bool operator ==(Object other) {
+    return other is EstadoDispositivo &&
+        other.idDispositivo == idDispositivo &&
+        other.ultimaActualizacion == ultimaActualizacion &&
+        other.latitud == latitud &&
+        other.longitud == longitud &&
+        other.velocidad == velocidad &&
+        other.cortaCorriente == cortaCorriente &&
+        other.protocoloActivo == protocoloActivo &&
+        other.humoDesplegado == humoDesplegado &&
+        other.sirenaActiva == sirenaActiva &&
+        other.voltaje == voltaje &&
+        other.humoActivo == humoActivo;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    idDispositivo,
+    ultimaActualizacion,
+    latitud,
+    longitud,
+    velocidad,
+    cortaCorriente,
+    protocoloActivo,
+    humoDesplegado,
+    sirenaActiva,
+    voltaje,
+    humoActivo,
+  );
+
   static double _asDouble(dynamic value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0.0;
