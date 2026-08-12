@@ -17,6 +17,17 @@ const DEFAULT_DEVICE_SECRET = process.env.DEVICE_SIM_SECRET || "dev-secret";
 const DEFAULT_PORT = Number(process.env.PORT || 5001);
 const COMMAND_TTL_MS = 60 * 1000;
 
+// Nombre del campo plano en dispositivos/{id} para cada target de comando.
+// Espejo de DatabaseService._targetForField en el lado Dart: mantiene
+// consistente cual campo se actualiza cuando el dispositivo confirma un
+// comando via ACK.
+const ACTUATOR_FIELD_BY_TARGET = {
+  humo: "humo",
+  sirena: "sirenaActiva",
+  cortaCorriente: "cortaCorriente",
+  protocoloActivo: "protocoloActivo",
+};
+
 const memoryStore = {
   devices: new Map(),
   telemetry: new Map(),
@@ -308,12 +319,35 @@ async function ackCommand(deviceId, commandId, ack) {
   };
   pushToMapList(memoryStore.events, deviceId, event);
 
+  const updates = {
+    [`device_commands/${deviceId}/${commandId}`]: command || ack,
+    [`device_events/${deviceId}/${Date.now()}`]: event,
+  };
+
+  // El actuador solo se toca aca, cuando el dispositivo (o el simulador STM)
+  // confirma ejecucion. Antes de este cambio, la app escribia el campo de
+  // inmediato al enviar el comando; ahora ese es el unico camino que puede
+  // marcarlo como activo/inactivo de verdad.
+  if (ack.status === "executed") {
+    const target = (ack.result && ack.result.target) || (command && command.target);
+    const field = ACTUATOR_FIELD_BY_TARGET[target];
+    if (field) {
+      const actuatorState =
+        ack.result && typeof ack.result.actuatorState !== "undefined"
+          ? Boolean(ack.result.actuatorState)
+          : Boolean(command && command.value);
+
+      updates[`dispositivos/${deviceId}/${field}`] = actuatorState;
+
+      const memDevice = memoryStore.devices.get(deviceId) || { id: deviceId };
+      memDevice[field] = actuatorState;
+      memoryStore.devices.set(deviceId, memDevice);
+    }
+  }
+
   const db = await getDb();
   if (db) {
-    await db.ref().update({
-      [`device_commands/${deviceId}/${commandId}`]: command || ack,
-      [`device_events/${deviceId}/${Date.now()}`]: event,
-    });
+    await db.ref().update(updates);
   }
 
   return command || { commandId, ...ack };

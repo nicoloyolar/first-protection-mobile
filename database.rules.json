@@ -1,0 +1,103 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "usuarios": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician')",
+
+        ".write": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician')",
+
+        "mis_vehiculos": {
+          "$vehicleId": {
+            ".write": "auth != null && (auth.uid === $uid || root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician')"
+          }
+        }
+      }
+    },
+
+    "vehicles_meta": {
+      ".read": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician')",
+
+      "$vehicleId": {
+        ".read": "auth != null && data.child('idPropietario').val() === auth.uid",
+
+        ".write": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician' || newData.child('idPropietario').val() === auth.uid)"
+      }
+    },
+
+    "dispositivos": {
+      ".read": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician')",
+
+      ".write": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician')",
+
+      "$deviceId": {
+        ".read": "auth != null && root.child('vehicles_meta/' + $deviceId + '/idPropietario').val() === auth.uid",
+
+        "id": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "idVehiculo": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "idPropietario": {
+          ".write": "auth != null && newData.val() === auth.uid"
+        },
+        "organizationId": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "alias": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "patente": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "ultimaVinculacion": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "ultimoComando": {
+          ".write": "auth != null && root.child('vehicles_meta/' + $deviceId + '/idPropietario').val() === auth.uid"
+        }
+      }
+    },
+
+    "device_commands": {
+      "$deviceId": {
+        ".read": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician' || root.child('vehicles_meta/' + $deviceId + '/idPropietario').val() === auth.uid)",
+
+        ".write": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician')",
+
+        "$commandId": {
+          ".write": "auth != null && !data.exists() && root.child('vehicles_meta/' + $deviceId + '/idPropietario').val() === auth.uid && newData.child('status').val() === 'pending' && newData.hasChildren(['type', 'target', 'value', 'status', 'requestedBy', 'requestedByRole', 'createdAt', 'expiresAt'])"
+        }
+      }
+    },
+
+    "device_events": {
+      "$deviceId": {
+        ".read": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician' || root.child('vehicles_meta/' + $deviceId + '/idPropietario').val() === auth.uid)",
+
+        ".write": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician')"
+      }
+    },
+
+    "device_telemetry": {
+      "$deviceId": {
+        ".read": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician' || root.child('vehicles_meta/' + $deviceId + '/idPropietario').val() === auth.uid)",
+
+        ".write": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician')"
+      }
+    },
+
+    "eventos": {
+      "$deviceId": {
+        ".read": "auth != null && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician' || root.child('vehicles_meta/' + $deviceId + '/idPropietario').val() === auth.uid)",
+
+        "$eventId": {
+          ".write": "auth != null && !data.exists() && (root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician' || root.child('vehicles_meta/' + $deviceId + '/idPropietario').val() === auth.uid)"
+        }
+      }
+    }
+  }
+}

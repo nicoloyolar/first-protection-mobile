@@ -1,5 +1,10 @@
 import 'package:first_protection/core/controllers/vehiculo_controller.dart';
+import 'package:first_protection/core/models/device_command_model.dart';
 import 'package:first_protection/core/models/estado_dispositivo_model.dart';
+import 'package:first_protection/core/services/database_service.dart';
+import 'package:first_protection/core/utils/device_command_status_ui.dart';
+import 'package:first_protection/core/utils/time_ago.dart';
+import 'package:first_protection/src/apps/client_mobile/ui/historial_eventos_screen.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/mobile_login_screen.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/vincular_vehiculo_screen.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/widgets/security_slider.dart';
@@ -21,6 +26,7 @@ class ClientHomeScreen extends StatefulWidget {
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   GoogleMapController? _mapController;
+  final DatabaseService _databaseService = DatabaseService();
 
   final String _mapStyle =
       '[{"elementType":"geometry","stylers":[{"color":"#212121"}]},{"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},{"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},{"featureType":"administrative","elementType":"geometry","stylers":[{"color":"#757575"}]},{"featureType":"poi","elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},{"featureType":"road","elementType":"geometry.fill","stylers":[{"color":"#2c2c2c"}]},{"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}]';
@@ -98,6 +104,19 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.history_rounded, color: Colors.white),
+            tooltip: "Historial de eventos",
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HistorialEventosScreen(
+                  idDispositivo: estado.idDispositivo,
+                  alias: vehiculo.alias,
+                ),
+              ),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () => _handleLogout(context),
           ),
@@ -165,7 +184,21 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             ),
           ),
 
-          Expanded(flex: 5, child: _buildControlPanel(vCtrl, estado)),
+          Expanded(
+            flex: 5,
+            child: StreamBuilder<List<DeviceCommand>>(
+              stream: _databaseService.escucharComandosDispositivo(
+                estado.idDispositivo,
+              ),
+              builder: (context, snapshot) {
+                return _buildControlPanel(
+                  vCtrl,
+                  estado,
+                  snapshot.data ?? const [],
+                );
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -174,7 +207,20 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   Widget _buildControlPanel(
     VehiculoController vCtrl,
     EstadoDispositivo estado,
+    List<DeviceCommand> comandos,
   ) {
+    final comandoCorte = DeviceCommandStatusUi.latestFor(
+      comandos,
+      DeviceCommandTarget.cortaCorriente,
+    );
+    final comandoHumo = DeviceCommandStatusUi.latestFor(
+      comandos,
+      DeviceCommandTarget.humo,
+    );
+    final comandoProtocolo = DeviceCommandStatusUi.latestFor(
+      comandos,
+      DeviceCommandTarget.protocoloActivo,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: const BoxDecoration(
@@ -226,6 +272,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 !estado.cortaCorriente,
               ),
             ),
+            _buildComandoEstado(comandoCorte),
 
             const SizedBox(height: 15),
 
@@ -239,6 +286,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     label: "HUMO",
                     activeColor: Colors.blueAccent,
                     isActive: estado.humoActivo,
+                    comando: comandoHumo,
                     onTap: () {
                       HapticFeedback.mediumImpact();
                       vCtrl.cambiarEstadoHumo(!estado.humoActivo);
@@ -254,6 +302,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     label: "SIRENA",
                     activeColor: Colors.redAccent,
                     isActive: estado.protocoloActivo,
+                    comando: comandoProtocolo,
                     onTap: () {
                       HapticFeedback.heavyImpact();
                       vCtrl.cambiarEstadoProtocolo(!estado.protocoloActivo);
@@ -320,13 +369,18 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     required Color activeColor,
     required bool isActive,
     required VoidCallback onTap,
+    DeviceCommand? comando,
   }) {
+    final estadoComando = comando != null
+        ? DeviceCommandStatusUi.forStatus(comando.status)
+        : null;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        height: 75,
+        height: 88,
         decoration: BoxDecoration(
           color: isActive
               ? activeColor.withValues(alpha:0.15)
@@ -353,8 +407,48 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 letterSpacing: 1,
               ),
             ),
+            const SizedBox(height: 3),
+            Text(
+              estadoComando?.label ?? "Sin comandos aún",
+              style: GoogleFonts.roboto(
+                color: estadoComando?.color ?? Colors.white12,
+                fontSize: 8,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Estado del último comando aplicado a un actuador (pendiente, recibido,
+  /// ejecutado, fallido o expirado). Todavía no hay ACK real de un
+  /// dispositivo físico, así que "pendiente" es el estado normal por ahora
+  /// — pero deja la UI lista para cuando exista hardware respondiendo.
+  Widget _buildComandoEstado(DeviceCommand? comando) {
+    if (comando == null) return const SizedBox.shrink();
+    final estadoUi = DeviceCommandStatusUi.forStatus(comando.status);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: estadoUi.color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            "Corte de corriente: ${estadoUi.label} · ${formatTimeAgo(comando.createdAt)}",
+            style: GoogleFonts.roboto(color: Colors.white38, fontSize: 10),
+          ),
+        ],
       ),
     );
   }

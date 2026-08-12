@@ -3,7 +3,12 @@ import 'package:first_protection/src/apps/admin_web/models/admin_device_view_dat
 import 'package:first_protection/src/apps/admin_web/ui/admin_web_login_screen.dart';
 import 'package:first_protection/src/apps/admin_web/ui/device_inventory_screen.dart';
 import 'package:first_protection/core/services/auth_service.dart';
+import 'package:first_protection/core/models/device_command_model.dart';
+import 'package:first_protection/core/services/database_service.dart';
 import 'package:first_protection/core/theme/app_colors.dart';
+import 'package:first_protection/core/utils/device_command_status_ui.dart';
+import 'package:first_protection/core/utils/device_event_formatter.dart';
+import 'package:first_protection/core/utils/time_ago.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -18,6 +23,7 @@ class AdminDashboardWeb extends StatefulWidget {
 class _AdminDashboardWebState extends State<AdminDashboardWeb> {
   GoogleMapController? _mapController;
   final AuthService _authService = AuthService();
+  final DatabaseService _databaseService = DatabaseService();
   late final AdminDashboardController _dashboardController;
 
   int _activeTab = 0;
@@ -354,13 +360,25 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
             ],
           ),
           const SizedBox(height: 20),
-          Row(children: [_tabButton("CONTROL", 0), _tabButton("DUEÑO", 1)]),
+          Row(
+            children: [
+              _tabButton("CONTROL", 0),
+              _tabButton("DUEÑO", 1),
+              _tabButton("DIAGNÓSTICO", 2),
+              _tabButton("EVENTOS", 3),
+              _tabButton("COMANDOS", 4),
+            ],
+          ),
           const Divider(color: Colors.white10, height: 30),
           Flexible(
             child: SingleChildScrollView(
-              child: _activeTab == 0
-                  ? _buildControlTab(info)
-                  : _buildOwnerTab(info),
+              child: switch (_activeTab) {
+                1 => _buildOwnerTab(info),
+                2 => _buildDiagnosticoTab(info),
+                3 => _buildEventosTab(info),
+                4 => _buildComandosTab(info),
+                _ => _buildControlTab(info),
+              },
             ),
           ),
         ],
@@ -386,9 +404,11 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
           child: Text(
             label,
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: isActive ? Colors.white : Colors.white24,
-              fontSize: 11,
+              fontSize: 9,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -535,6 +555,364 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
       ],
     );
   }
+
+  Widget _buildDiagnosticoTab(Map<String, dynamic> info) {
+    final network = info['network'] is Map
+        ? info['network'] as Map
+        : const {};
+    final power = info['power'] is Map ? info['power'] as Map : const {};
+    final location = info['location'] is Map
+        ? info['location'] as Map
+        : const {};
+
+    final int? rssi = network['rssi'] is num
+        ? (network['rssi'] as num).toInt()
+        : null;
+    final int? lastSeen = _asMillis(
+      info['timestamp'] ?? info['ultimaActualizacion'],
+    );
+    final bool isOnline = network.containsKey('online')
+        ? network['online'] == true
+        : _isRecentlySeen(lastSeen);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: isOnline ? Colors.greenAccent : Colors.white24,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isOnline ? "EN LÍNEA" : "SIN CONEXIÓN",
+              style: TextStyle(
+                color: isOnline ? Colors.greenAccent : Colors.white38,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              "Últ. reporte: ${formatTimeAgo(lastSeen)}",
+              style: const TextStyle(color: Colors.white24, fontSize: 9),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        _sectionLabel("DISPOSITIVO"),
+        const SizedBox(height: 12),
+        _rowDetail(
+          Icons.memory,
+          "FIRMWARE",
+          _orSinDato(info['firmwareVersion']?.toString()),
+        ),
+        const SizedBox(height: 12),
+        _rowDetail(
+          Icons.developer_board,
+          "HARDWARE",
+          _orSinDato(info['hardwareVersion']?.toString()),
+        ),
+
+        const SizedBox(height: 20),
+        _sectionLabel("CONECTIVIDAD"),
+        const SizedBox(height: 12),
+        _rowDetail(Icons.signal_cellular_alt, "SEÑAL RED", _signalLabel(rssi)),
+        const SizedBox(height: 12),
+        _rowDetail(
+          Icons.satellite_alt,
+          "GPS",
+          location['gpsFix'] == false
+              ? "Sin fix"
+              : "${_orSinDato(location['satellites']?.toString())} satélites · ±${_orSinDato(location['accuracyMeters']?.toString())} m",
+        ),
+
+        const SizedBox(height: 20),
+        _sectionLabel("ENERGÍA"),
+        const SizedBox(height: 12),
+        _rowDetail(
+          Icons.battery_charging_full,
+          "BATERÍA DE RESPALDO",
+          power['backupBatteryPercent'] != null
+              ? "${power['backupBatteryPercent']}%"
+              : "Sin dato",
+        ),
+        const SizedBox(height: 12),
+        _rowDetail(
+          Icons.bolt,
+          "VOLTAJE VEHÍCULO",
+          "${_orSinDato((power['vehicleVoltage'] ?? info['voltaje'])?.toString())} V",
+        ),
+        const SizedBox(height: 12),
+        _rowDetail(
+          Icons.power_input,
+          "ALIMENTACIÓN EXTERNA",
+          power['externalPower'] == true ? "Conectada" : "Desconectada",
+        ),
+      ],
+    );
+  }
+
+  /// Estado de los comandos enviados a este dispositivo. Hoy el estado casi
+  /// siempre va a mostrar "Pendiente" porque el actuador todavía se escribe
+  /// directo (ver hito de sincronización en docs/plan-de-trabajo.md); esta
+  /// vista deja lista la UI para cuando el simulador/hardware empiece a
+  /// mandar el ACK real.
+  Widget _buildComandosTab(Map<String, dynamic> info) {
+    final deviceId = info['id']?.toString() ?? '';
+    if (deviceId.isEmpty) {
+      return const Text(
+        "Sin dispositivo seleccionado",
+        style: TextStyle(color: Colors.white24, fontSize: 11),
+      );
+    }
+
+    return StreamBuilder<List<DeviceCommand>>(
+      stream: _databaseService.escucharComandosDispositivo(deviceId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 30),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: AppColors.primaryOrange,
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+          );
+        }
+
+        final comandos = snapshot.data!;
+        if (comandos.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 30),
+            child: Center(
+              child: Text(
+                "Sin comandos registrados",
+                style: TextStyle(color: Colors.white24, fontSize: 11),
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: comandos.take(30).map(_comandoTile).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _comandoTile(DeviceCommand comando) {
+    final estadoUi = DeviceCommandStatusUi.forStatus(comando.status);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.02),
+        borderRadius: BorderRadius.circular(10),
+        border: Border(left: BorderSide(color: estadoUi.color, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  "${DeviceCommandStatusUi.targetLabel(comando.target)} → ${comando.value == true ? 'activar' : 'desactivar'}",
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                formatTimeAgo(comando.createdAt),
+                style: const TextStyle(color: Colors.white24, fontSize: 9),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: estadoUi.color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                estadoUi.label,
+                style: TextStyle(
+                  color: estadoUi.color,
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (comando.requestedByRole.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Text(
+                  "· solicitado por ${comando.requestedByRole}",
+                  style: const TextStyle(color: Colors.white24, fontSize: 9),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventosTab(Map<String, dynamic> info) {
+    final deviceId = info['id']?.toString() ?? '';
+    if (deviceId.isEmpty) {
+      return const Text(
+        "Sin dispositivo seleccionado",
+        style: TextStyle(color: Colors.white24, fontSize: 11),
+      );
+    }
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _databaseService.escucharEventosDispositivo(deviceId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 30),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: AppColors.primaryOrange,
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+          );
+        }
+
+        final eventos = snapshot.data!;
+        if (eventos.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 30),
+            child: Center(
+              child: Text(
+                "Sin eventos registrados",
+                style: TextStyle(color: Colors.white24, fontSize: 11),
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: eventos.take(30).map(_eventoTile).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _eventoTile(Map<String, dynamic> evento) {
+    final severidad = evento['severidad']?.toString() ?? 'info';
+    final color = switch (severidad) {
+      'critical' => Colors.redAccent,
+      'warning' => Colors.orangeAccent,
+      _ => Colors.white38,
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.02),
+        borderRadius: BorderRadius.circular(10),
+        border: Border(left: BorderSide(color: color, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  DeviceEventFormatter.describe(evento),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                formatTimeAgo(evento['timestamp'] as int?),
+                style: const TextStyle(color: Colors.white24, fontSize: 9),
+              ),
+            ],
+          ),
+          if ((evento['actorRole'] as String?)?.isNotEmpty == true) ...[
+            const SizedBox(height: 4),
+            Text(
+              "Solicitado por: ${evento['actorRole']}",
+              style: const TextStyle(color: Colors.white24, fontSize: 9),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: Colors.white24,
+        fontSize: 9,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+
+  String _orSinDato(String? value) =>
+      (value == null || value.isEmpty) ? "Sin dato" : value;
+
+  String _signalLabel(int? rssi) {
+    if (rssi == null) return "Sin dato";
+    if (rssi >= -70) return "Buena ($rssi dBm)";
+    if (rssi >= -90) return "Regular ($rssi dBm)";
+    return "Débil ($rssi dBm)";
+  }
+
+  int? _asMillis(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return null;
+  }
+
+  bool _isRecentlySeen(int? lastSeenMillis) {
+    if (lastSeenMillis == null || lastSeenMillis == 0) return false;
+    final ageMs = DateTime.now().millisecondsSinceEpoch - lastSeenMillis;
+    return ageMs >= 0 && ageMs <= const Duration(minutes: 5).inMilliseconds;
+  }
+
 
   Widget _readOnlyDetail(IconData icon, String label, String value) {
     return Row(

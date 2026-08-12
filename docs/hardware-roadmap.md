@@ -32,6 +32,17 @@ Entregables:
 - Pantalla local definida: OLED 1.3" 128x64 blanco/azul. Usar interfaz I2C (4 pines) en vez de SPI (7 pines) para ahorrar GPIO, dado que ya se ocupan pines en UART (GPS) y salidas digitales (actuadores).
 - Modem/conectividad: sin definir. No hay modulo SIM/celular todavia. Este es el bloqueo principal de esta fase: sin conectividad resuelta no se puede avanzar a Fase 3, donde "levantar conectividad" es el primer paso del firmware MVP.
 
+### Decision De Modem (2026-08-12)
+
+Se resuelve el bloqueo anterior con una decision en dos etapas, priorizando velocidad y costo para el prototipo actual:
+
+- **Etapa prototipo (ahora):** modulo **SIMCom A7670C / A7670SA**, LTE Cat-1. Mismo fabricante y set de comandos AT que el SIM7600, por lo que el firmware escrito ahora migra sin rediseno cuando corresponda pasar a Cat-4. Costo aproximado del modulo: USD 10-25 (importado), muy por debajo del SIM7600 (~CLP 90.490 / USD ~95-115 comprado en Chile con stock inmediato). Cat-1 (hasta 10 Mbps) sobra para telemetria/comandos en JSON, que son payloads chicos.
+- **Etapa version profesional/produccion (futuro, no bloquea el prototipo):** **SIM7600 (Cat-4)** queda como upgrade path evaluado y validado tecnicamente (ver analisis previo), para cuando el proyecto pase de "dar la vuelta" a un producto mas robusto.
+- **Se descarta definitivamente cualquier modulo 2G (ej. SIM800L/SIM900):** Entel ya completo el apagon de su red 2G (2024) y Movistar/Claro tienen confirmado el cierre de 2G y 3G para 2025-2026. Un modulo 2G comprado hoy corre riesgo de quedar sin red antes de terminar el piloto.
+- Pendiente igual para el A7670: confirmar que la variante de bandas (A7670C vs A7670SA vs A7670E) cubre las bandas LTE del operador que se use en el piloto, y dimensionar la fuente DC-DC para sus picos de consumo — mismo chequeo que hubiera aplicado al SIM7600.
+
+Con esto, el bloqueo critico de Fase 0 queda resuelto y se puede iniciar Fase 3 (Firmware MVP) sobre el A7670.
+
 ## Fase 1: Backend De Integracion
 
 Estado esperado: backend listo antes de tener hardware final.

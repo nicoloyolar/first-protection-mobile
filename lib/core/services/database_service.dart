@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_database/firebase_database.dart';
 import '../models/app_user_profile.dart';
 import '../models/device_command_model.dart';
@@ -156,6 +158,13 @@ class DatabaseService {
     );
   }
 
+  /// Crea un comando pendiente para el dispositivo y deja auditoría, pero
+  /// YA NO toca el campo del actuador (`dispositivos/{id}/{campo}`)
+  /// directamente. Ese campo solo debe reflejar lo que el dispositivo (o el
+  /// simulador STM, mientras no exista hardware real) confirma vía ACK — ver
+  /// `functions/index.js:ackCommand`. Este es el hito de sincronización de
+  /// docs/plan-de-trabajo.md: antes, la UI mentía mostrando el comando como
+  /// aplicado de inmediato aunque nadie lo hubiera ejecutado todavía.
   Future<void> actualizarComandoDispositivo({
     required String idDispositivo,
     required String campo,
@@ -172,7 +181,6 @@ class DatabaseService {
     );
 
     final updates = <String, dynamic>{
-      'dispositivos/$idDispositivo/$campo': valor,
       'dispositivos/$idDispositivo/ultimoComando': {
         'campo': campo,
         'valor': valor,
@@ -271,6 +279,109 @@ class DatabaseService {
         },
       ).toMap(),
     });
+  }
+
+  /// Combina `eventos/{id}` (comandos remotos, esquema legacy) y
+  /// `device_events/{id}` (esquema nuevo: heartbeat/tamper/panic/ack) en un
+  /// solo feed de auditoria para el panel admin. Filtra heartbeats: son
+  /// telemetria rutinaria, no un evento critico que valga la pena auditar.
+  Stream<List<Map<String, dynamic>>> escucharEventosDispositivo(
+    String idDispositivo,
+  ) {
+    final controller = StreamController<List<Map<String, dynamic>>>.broadcast();
+    List<Map<String, dynamic>> comandos = const [];
+    List<Map<String, dynamic>> deviceEvents = const [];
+
+    void emitir() {
+      final combinados = [...comandos, ...deviceEvents]
+        ..sort(
+          (a, b) => (b['timestamp'] as int).compareTo(a['timestamp'] as int),
+        );
+      controller.add(combinados);
+    }
+
+    final subComandos = _db
+        .child('eventos/$idDispositivo')
+        .limitToLast(50)
+        .onValue
+        .listen((event) {
+          comandos = _parseComandoEvents(event.snapshot);
+          emitir();
+        });
+
+    final subDeviceEvents = _db
+        .child('device_events/$idDispositivo')
+        .limitToLast(50)
+        .onValue
+        .listen((event) {
+          deviceEvents = _parseDeviceEvents(idDispositivo, event.snapshot);
+          emitir();
+        });
+
+    controller.onCancel = () async {
+      await subComandos.cancel();
+      await subDeviceEvents.cancel();
+    };
+
+    return controller.stream;
+  }
+
+  List<Map<String, dynamic>> _parseComandoEvents(DataSnapshot snapshot) {
+    if (snapshot.value is! Map) return const [];
+    final data = Map<dynamic, dynamic>.from(snapshot.value as Map);
+
+    return data.entries.where((entry) => entry.value is Map).map((entry) {
+      final value = Map<dynamic, dynamic>.from(entry.value as Map);
+      final campo = value['campo']?.toString() ?? '';
+      final valor = value['valor'] == true;
+      final esCritico = campo == 'cortaCorriente' && valor;
+
+      return <String, dynamic>{
+        'source': 'comando',
+        'tipo': value['tipo']?.toString() ?? 'comandoRemoto',
+        'campo': campo,
+        'valor': valor,
+        'actorRole': value['actorRole']?.toString(),
+        'timestamp': _asInt(value['timestamp']),
+        'severidad': esCritico ? 'critical' : 'warning',
+      };
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _parseDeviceEvents(
+    String deviceId,
+    DataSnapshot snapshot,
+  ) {
+    if (snapshot.value is! Map) return const [];
+    final data = Map<dynamic, dynamic>.from(snapshot.value as Map);
+
+    return data.entries
+        .where((entry) => entry.value is Map)
+        .map((entry) {
+          final deviceEvent = DeviceEvent.fromMap(
+            entry.key.toString(),
+            deviceId,
+            Map<dynamic, dynamic>.from(entry.value as Map),
+          );
+          return deviceEvent;
+        })
+        .where((deviceEvent) => deviceEvent.type != DeviceEventType.heartbeat)
+        .map(
+          (deviceEvent) => <String, dynamic>{
+            'source': 'device',
+            'tipo': deviceEvent.type.name,
+            'severidad': deviceEvent.severity.name,
+            'timestamp': deviceEvent.timestamp,
+            'metadata': deviceEvent.metadata,
+          },
+        )
+        .toList();
+  }
+
+  static int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   Future<void> registrarTelemetriaDispositivo(DeviceTelemetry telemetry) async {

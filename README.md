@@ -82,7 +82,7 @@ eventos/{deviceId}/{eventId}
 
 ## Comandos
 
-Los comandos criticos se escriben mediante `DatabaseService.actualizarComandoDispositivo`, que actualiza el dispositivo y deja una entrada en `eventos/{deviceId}`.
+Los comandos criticos se solicitan mediante `DatabaseService.actualizarComandoDispositivo`, que crea un comando pendiente en `device_commands/{deviceId}` y deja auditoria en `eventos/{deviceId}`. **No** modifica el actuador de inmediato: el campo en `dispositivos/{deviceId}/{campo}` solo cambia cuando el dispositivo (o el simulador STM, mientras no exista hardware real) confirma la ejecucion via ACK en `functions/index.js:ackCommand`. La UI (app y panel) muestra el estado del comando mientras tanto (pendiente/recibido/ejecutado/fallido/expirado).
 
 Campos operativos actuales:
 
@@ -101,6 +101,7 @@ Documentacion tecnica:
 - [Plan de trabajo hardware](docs/hardware-roadmap.md)
 - [Simulador STM](docs/stm-simulator.md)
 - [Checklist de integracion](docs/integration-checklist.md)
+- [Reglas de Realtime Database](docs/database-rules.md)
 
 Resumen de responsabilidades:
 
@@ -143,7 +144,7 @@ flutter run -d chrome
 
 ## Pendientes Antes De Produccion
 
-- Publicar reglas estrictas de Realtime Database alineadas al esquema anterior.
+- ~~Publicar reglas estrictas de Realtime Database alineadas al esquema anterior.~~ Resuelto 2026-08-12: ver [`database.rules.json`](database.rules.json) y [docs/database-rules.md](docs/database-rules.md) — **incluye un paso manual obligatorio antes del primer deploy** (sembrar el primer usuario admin).
 - Restringir las API keys de Google Maps por dominio, paquete Android, SHA-1 y APIs permitidas.
 - Definir proceso formal para crear usuarios admin y asignar roles.
 - Reconstruir o eliminar `functions/` si se usaran Cloud Functions reales.

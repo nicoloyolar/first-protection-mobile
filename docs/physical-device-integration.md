@@ -155,7 +155,7 @@ El firmware debe manejar:
 
 ## Pendientes De Decision
 
-- Red disponible para el STM: LTE, NB-IoT, WiFi, LoRa u otra. **Sin definir. Aun no hay modulo SIM/celular** — bloqueo principal antes de iniciar Fase 3 (Firmware MVP) del roadmap, ya que WiFi y LoRa no son viables para un vehiculo en movimiento fuera de una red conocida.
+- Red disponible para el STM: **Resuelto (2026-08-12)** — LTE via modulo SIMCom A7670C/A7670SA (Cat-1) para la etapa de prototipo. Se descarto 2G (SIM800L u otro) porque las redes 2G/3G en Chile estan en apagon (Entel ya completo el suyo; Movistar/Claro lo completan en 2025-2026). El SIM7600 (Cat-4) queda como upgrade evaluado para una version mas robusta futura, sin bloquear el prototipo actual. Pendiente: confirmar bandas exactas del A7670 contra el operador del piloto.
 - Protocolo principal: HTTPS pull, HTTPS push, MQTT o WebSocket.
 - Quien decide reglas automaticas: firmware, backend o mixto.
 - Politica exacta del corta corriente por seguridad electrica/legal.

@@ -2,7 +2,7 @@
 
 Documento vivo para ordenar el trabajo pendiente en todos los frentes (app móvil, panel web, backend/seguridad y hardware). Base para la conversación con el cliente. Se actualiza a medida que se sume documentación adicional o cambien prioridades.
 
-Última actualización: 2026-08-11 (incorpora 6 documentos adicionales aportados por el usuario, todos fechados 27-may-2026).
+Última actualización: 2026-08-12 (se cierra la decisión de módem para el prototipo — ver sección de Hallazgo Crítico y Pista D).
 
 ## Cómo Leer Este Documento
 
@@ -44,8 +44,17 @@ Los 6 documentos aportados (fechados **27-may-2026**) describen un estado del pr
 
 **Recomendación para la reunión con el cliente:**
 - No presentar "flujo de comandos cerrado" ni "reglas Firebase versionadas" como completado — decir que está en curso (ya está en este plan).
-- Preguntar puntualmente: *¿el SIM7600 sigue siendo la decisión vigente, o se descartó entre mayo y julio?* Esa respuesta cambia si el bloqueo de hardware sigue "sin definir" o solo falta "confirmar modelo y probar".
 - Preguntar si existen los 4 documentos referenciados (`development-guide`, `internal-user-manual`, `project-decisions-and-risks`, `delivery-log`) en algún otro lugar — tienen contenido valioso (guía de entornos, plan de pruebas) que conviene recuperar en vez de rehacer.
+
+### Actualización 2026-08-12 — Contradicción Del SIM7600 Resuelta
+
+Se tomó una decisión explícita en dos etapas en vez de forzar una sola respuesta a "¿sigue vigente el SIM7600 o no?":
+
+- **Prototipo actual:** módem **SIMCom A7670C/A7670SA** (LTE Cat-1). Mismo fabricante y set de comandos AT que el SIM7600, así que el firmware que se escriba ahora no se pierde si más adelante se sube a Cat-4. Costo muy inferior (USD 10-25 importado vs. ~CLP 90.490 del SIM7600 con stock en Chile) — coherente con que esta etapa es un prototipo/MVP, no producción en volumen.
+- **Version profesional/producción futura:** el SIM7600 queda como upgrade evaluado y no descartado, para cuando el proyecto pase de "dar la vuelta" con un vehículo de prueba a un producto más robusto.
+- Se descarta explícitamente cualquier módulo 2G (tipo SIM800L): Entel ya completó su apagón de 2G (2024) y Movistar/Claro tienen confirmado el cierre de 2G y 3G en Chile para 2025-2026 — comprar un módulo 2G hoy sería comprar algo que puede quedar sin red durante el piloto.
+- Detalle completo en `docs/hardware-roadmap.md` (sección "Decisión De Modem"), `docs/integration-checklist.md` y `docs/avance-hardware-dispositivo.md`.
+- Sigue pendiente (no bloqueante): confirmar la variante de bandas exacta del A7670 contra el operador que se use en el piloto.
 
 ---
 
@@ -53,13 +62,13 @@ Los 6 documentos aportados (fechados **27-may-2026**) describen un estado del pr
 
 | Prioridad | Brecha | Evidencia | Nota |
 |---|---|---|---|
-| 🔴 | Los comandos (humo, sirena, corta corriente) modifican el actuador **de inmediato** desde la app; no esperan confirmación (ACK) del dispositivo físico. | `database_service.dart:actualizarComandoDispositivo` escribe en `dispositivos/{id}/{campo}` en el mismo paso que crea el comando. | Es el mismo hueco que marca el checklist como "siguiente hito recomendado". Hoy funciona porque no hay hardware real; se vuelve riesgo en cuanto exista un STM. |
-| 🔴 | No se muestra el estado del comando (pendiente / recibido / ejecutado / fallido / expirado). | No hay UI que lea `device_commands/{deviceId}`; el modelo `DeviceCommand` existe pero no se consume en `client_home_screen.dart`. | Requiere resolver el punto anterior primero. |
+| 🟢 **Resuelto (2026-08-12)** | Los comandos ya no modifican el actuador de inmediato: pasan por `device_commands/` y esperan ACK. | `database_service.dart:actualizarComandoDispositivo` ya no escribe `dispositivos/{id}/{campo}`; `functions/index.js:ackCommand` es el único que lo hace, y solo cuando `status: executed`. | Era el hito de sincronización del Sprint 2. El simulador STM sigue siendo quien responde el ACK mientras no exista hardware real. |
+| 🟢 **Resuelto (2026-08-12)** | Estado del comando (pendiente / recibido / ejecutado / fallido / expirado) visible en la UI. | `client_home_screen.dart` (badge en slider y botones de humo/sirena) y `admin_dashboard_web.dart` (pestaña "COMANDOS"), ambos sobre `DatabaseService.escucharComandosDispositivo`. | Hoy va a mostrar casi siempre "Pendiente" porque el punto anterior (actuador directo) sigue sin resolverse — es exactamente lo que esta vista deja visible, en vez de ocultarlo. |
 | 🔴 | No se registra `usuarios/{uid}/liveLocation` ni existe lógica de cercanía usuario-vehículo. | No hay ningún archivo que escriba ubicación del usuario ni compare distancias. | Bloquea toda la lógica de "posible portonazo" descrita en `physical-device-integration.md`. |
 | 🟠 | Sin modo estacionado/armado (`systemMode`). | No existe ningún control ni campo consumido para esto en la app. | |
 | 🟠 | Sin notificaciones (SMS, correo, llamada a central). | Pendiente explícito en `apuntes.txt`. | Depende de definir proveedor (Twilio/Firebase Cloud Messaging/central telefónica). |
 | 🟠 | Sin registro de datos del propietario desde la app móvil (nombre, RUT, email, teléfono, domicilio, contacto de emergencia). | Pendiente en `apuntes.txt`; hoy solo se edita desde el panel web. | Web ya lo tiene, falta paridad en móvil. |
-| 🟠 | Sin historial de eventos visible para el cliente. | No hay pantalla que lea `eventos/{deviceId}` ni `device_events/{deviceId}`. | |
+| 🟢 **Resuelto (2026-08-12)** | Historial de eventos visible para el cliente. | Nueva pantalla `HistorialEventosScreen`, accesible desde el ícono de historial en el AppBar del dashboard móvil. Reutiliza `DatabaseService.escucharEventosDispositivo`. | Mismo dato y stream que la pestaña "Eventos" del panel admin; se factorizó el formateo de mensajes en `DeviceEventFormatter` para no duplicar lógica entre app y panel. |
 | 🟠 | Sin geocerca (validación de distancia/velocidad). | Pendiente explícito en `apuntes.txt`. | |
 | 🟡 | Falta integrar color del vehículo en el flujo móvil (el panel web ya lo tiene). | `apuntes.txt`. | |
 | 🟡 | Optimizar el slider de corte de corriente. | `apuntes.txt`; `security_slider.dart` funcional pero pendiente de ajuste UX. | |
@@ -69,10 +78,10 @@ Los 6 documentos aportados (fechados **27-may-2026**) describen un estado del pr
 
 | Prioridad | Brecha | Evidencia | Nota |
 |---|---|---|---|
-| 🔴 | Mismo problema de comandos directos sin cola/ACK que en móvil. | `admin_dashboard_web.dart:_confirmCommand` → `updateDeviceCommand` → mismo método directo. | Se resuelve junto con el punto de app móvil: es un cambio de backend + ambos frontends a la vez. |
-| 🔴 | No hay vista de comandos pendientes ni su estado/ACK. | No existe pantalla que lea `device_commands/`. | |
-| 🔴 | No hay vista de diagnóstico técnico: firmware/hardware version, señal GPS/red, batería de respaldo, último heartbeat (`lastSeenAt`). | Modelos (`DeviceTelemetry`, `DeviceEvent`) ya existen en `lib/core/models`, pero no hay pantalla que los consuma. | El dato ya se guarda (`registrarTelemetriaDispositivo`); falta solo UI. |
-| 🟠 | No hay vista de eventos críticos / auditoría, aunque el modelo de datos ya audita todo en `eventos/{deviceId}` y `device_events/{deviceId}`. | `database_service.dart` escribe eventos correctamente; no hay pantalla que los liste. | Ganancia rápida: el dato ya existe, solo falta exponerlo. |
+| 🟢 **Resuelto (2026-08-12)** | Mismo fix de comandos directos sin cola/ACK, ya que panel y app comparten `actualizarComandoDispositivo`. | `admin_dashboard_web.dart:_confirmCommand` → `updateDeviceCommand` → método ya corregido. | Un solo cambio en `database_service.dart` resolvió ambos frontends a la vez. |
+| 🟢 **Resuelto (2026-08-12)** | Vista de comandos y su estado/ACK. | Pestaña "COMANDOS" en `admin_dashboard_web.dart`, sobre `device_commands/`. | El estado hoy es casi siempre "Pendiente" hasta que se resuelva el punto anterior (actuador directo). |
+| 🟢 **Resuelto (2026-08-12)** | Vista de diagnóstico técnico: firmware/hardware version, señal GPS/red, batería de respaldo, último heartbeat. | Nueva pestaña "DIAGNÓSTICO" en `admin_dashboard_web.dart`, junto a CONTROL y DUEÑO. Lee directo del nodo `dispositivos/{id}` que ya escribe `registrarTelemetriaDispositivo`. | Sin trabajo de backend adicional — el dato ya existía, solo faltaba la pantalla. |
+| 🟢 **Resuelto (2026-08-12)** | Vista de eventos críticos / auditoría, combinando `eventos/{deviceId}` (comandos remotos) y `device_events/{deviceId}` (heartbeat/tamper/panic/ack, sin contar heartbeat que es ruido rutinario). | Nueva pestaña "EVENTOS" en `admin_dashboard_web.dart`, alimentada por `DatabaseService.escucharEventosDispositivo`. | Sin trabajo de backend adicional — el dato ya existía, solo faltaba exponerlo. |
 | 🟠 | Sin filtro por organización/flota en el dashboard (el modelo de datos ya soporta `organizationId`). | `escucharDispositivosAdmin` acepta `organizationId` pero la UI no lo usa. | Relevante si el cliente quiere vender a empresas/flotas más adelante. |
 | 🟡 | Sin bloqueo operacional adicional para comandos peligrosos más allá del diálogo de confirmación actual (ya existe confirmación simple). | `admin_dashboard_web.dart:_confirmCommand`. | Evaluar si alcanza o se requiere doble aprobación para corta corriente. |
 
@@ -80,7 +89,7 @@ Los 6 documentos aportados (fechados **27-may-2026**) describen un estado del pr
 
 | Prioridad | Brecha | Evidencia | Nota |
 |---|---|---|---|
-| 🔴 | Reglas de Realtime Database sin publicar en modo estricto (hoy expuesto a modo abierto/dev). | `README.md` "Pendientes antes de producción"; no hay archivo `database.rules.json` con reglas por rol/organización revisado en el repo. | Riesgo de seguridad más urgente antes de cualquier demo pública. |
+| 🟢 **Resuelto (2026-08-12)** | Reglas de Realtime Database publicadas: autenticación obligatoria, separación cliente/interno por rol, el cliente no puede tocar el actuador ni falsificar su propio ACK. | `database.rules.json` (raíz), referenciado desde `firebase.json`. Detalle y limitaciones conocidas en `docs/database-rules.md`. | **Acción manual pendiente antes de desplegar**: sembrar el primer usuario con `role: admin` a mano (Console o Admin SDK) — sin eso, nadie puede entrar al panel después del deploy. Sin probar aún contra el emulador. |
 | 🔴 | `functions/` solo tiene `index.js` y `package.json` mínimos, sin desplegar como Cloud Functions reales; sirve hoy como API local para el simulador. | `functions/index.js`, `functions/package.json`; checklist marca "Backend desplegado en Firebase Functions" como pendiente. | Decisión pendiente: reconstruir como Cloud Functions o mantener servicio propio. |
 | 🔴 | Sin tests automatizados de la API de dispositivo (telemetría/comandos/ACK). | Solo existe `test/models_test.dart` (modelos Dart), nada de la API HTTP. | |
 | 🟠 | API keys de Google Maps sin restringir por dominio/paquete/SHA-1/APIs permitidas. | `README.md` pendientes. | Tarea de configuración (no de código), rápida de resolver. |
@@ -95,7 +104,7 @@ Los 6 documentos aportados (fechados **27-may-2026**) describen un estado del pr
 
 | Prioridad | Brecha | Evidencia | Nota |
 |---|---|---|---|
-| 🔴 **BLOQUEANTE (a confirmar)** | Módulo SIM/celular: los docs de julio dicen "sin definir todavía"; los PDF de mayo ya dan por elegido el **SIM7600** (con modelo/bandas exactas por confirmar). Contradicción sin resolver — ver hallazgo crítico arriba. | `docs/hardware-roadmap.md`/`integration-checklist.md` (jul-2026) vs. *Estado del proyecto* / *Arquitectura técnica* (PDF, may-2026). | **Antes de la reunión, preguntar directamente al equipo de hardware cuál de las dos versiones está vigente.** Si el SIM7600 sigue en pie, el bloqueo es más liviano ("confirmar modelo y probar") que si volvió a "sin definir". |
+| 🟢 **Resuelto (2026-08-12)** | Módulo SIM/celular definido para el prototipo: **A7670C/A7670SA** (LTE Cat-1), con el SIM7600 (Cat-4) reservado como upgrade para una versión más profesional/productiva futura. | `docs/hardware-roadmap.md` sección "Decisión De Modem" (12-ago-2026). | Pendiente no bloqueante: confirmar bandas exactas del A7670 contra el operador del piloto. |
 | 🟠 | Controlador principal STM32 — dado como definido en los PDF de mayo, no mencionado como decisión pendiente en los docs de julio (consistente, sin conflicto). | *Arquitectura técnica*, *Estado del proyecto* (PDF). | |
 | 🟢 | GPS/GNSS: módulo NEO-M8N (familia u-blox NEO-M8N/GY-GPSV3-NEO) — coincide entre repo y PDF, con datasheet completo ya en mano (UART 9600–460800 baud, 3.3–6V, precisión ~2m). | `docs/hardware-roadmap.md` + datasheet *GY-NEO-M8N GPS MODULE* (PDF). | Sin conflicto — este componente está resuelto y documentado a nivel de specs. |
 | 🟠 | Circuitos de sirena, humo y corta corriente sin definir (relés/MOSFETs optoaislados marcados como "requerido" pero sin circuito). | `docs/hardware-roadmap.md` Fase 0; *Estado del proyecto* (PDF) sección "Esquema de hardware definido para prototipo". | |
@@ -112,39 +121,41 @@ Los 6 documentos aportados (fechados **27-may-2026**) describen un estado del pr
 
 Se organiza en **4 pistas paralelas** (para "atacar todos los frentes" a la vez) más un hito de sincronización que las cruza. Dentro de cada pista, el orden importa (de arriba hacia abajo); entre pistas, pueden avanzar simultáneamente con distintas personas/tiempos.
 
-### Hito de sincronización (cruza Móvil + Web + Backend)
+### Hito de sincronización (cruza Móvil + Web + Backend) — ✅ Resuelto 2026-08-12
 
-Este es el cambio más importante del próximo ciclo porque hoy la app y el panel alteran el actuador directamente, lo cual es incompatible con tener un dispositivo físico real:
+Era el cambio más importante porque hasta el 11-ago la app y el panel alteraban el actuador directamente, lo cual es incompatible con tener un dispositivo físico real:
 
-1. Backend: terminar el modelo `device_commands` (ya existe parcialmente) para que **todo comando pase por cola pendiente → ACK**, sin tocar el campo del actuador hasta que el dispositivo confirme.
-2. Panel web: agregar vista de comando pendiente/estado y dejar de escribir el actuador directo.
-3. App móvil: mismo cambio + mostrar estado visual (pendiente/ejecutado/fallido/expirado) en el slider y botones de humo/sirena.
-4. Backend: mientras no exista hardware real, mantener el simulador (`scripts/stm_simulator.py`) como el que responde el ACK, para no romper las demos.
+1. ✅ Backend: `device_commands` ahora es el único camino — **todo comando pasa por cola pendiente → ACK**, sin tocar el campo del actuador hasta que el dispositivo confirme (`functions/index.js:ackCommand`).
+2. ✅ Panel web: vista de comando pendiente/estado (pestaña "COMANDOS", Sprint 1) y ya no escribe el actuador directo.
+3. ✅ App móvil: mismo cambio + estado visual (pendiente/ejecutado/fallido/expirado) en el slider y botones de humo/sirena (Sprint 1).
+4. ✅ El simulador (`scripts/stm_simulator.py`) sigue respondiendo el ACK; el backend ahora usa ese ACK para actualizar el actuador real, en vez de que la app lo adivine.
+
+Efecto práctico: al presionar un botón, el estado va a mostrar "Pendiente" hasta que el simulador (corriendo con `npm run serve:device-api` + `python scripts/stm_simulator.py`) haga el siguiente poll y confirme — recién ahí el botón/slider refleja el cambio real. Esto es esperado y correcto; antes era instantáneo pero falso.
 
 ### Pista A — App Móvil
 
-1. 🔴 Migrar comandos de escritura directa a modelo pendiente/ACK (ver hito de sincronización).
-2. 🔴 Mostrar estado de comando en UI.
+1. ✅ ~~Migrar comandos de escritura directa a modelo pendiente/ACK~~ — resuelto 2026-08-12 (ver hito de sincronización).
+2. ✅ ~~Mostrar estado de comando en UI~~ — resuelto 2026-08-12.
 3. 🔴 Registrar `liveLocation` del usuario + lógica básica de cercanía usuario-vehículo.
 4. 🟠 Modo estacionado/armado.
 5. 🟠 Formulario de datos del propietario (nombre, RUT, email, teléfono, domicilio, contacto de emergencia).
-6. 🟠 Historial de eventos para el cliente.
+6. ✅ ~~Historial de eventos para el cliente~~ — resuelto 2026-08-12.
 7. 🟠 Notificaciones (definir proveedor primero: push / SMS / correo / llamada).
 8. 🟠 Geocerca.
 9. 🟡 Color de vehículo, optimización de slider, fix bug "foco malo".
 
 ### Pista B — Panel Web
 
-1. 🔴 Migrar comandos al modelo pendiente/ACK (ver hito de sincronización).
-2. 🔴 Vista de comandos pendientes y su estado.
-3. 🔴 Vista de diagnóstico técnico (firmware/hardware version, señal, batería, `lastSeenAt`).
-4. 🟠 Vista de eventos críticos / auditoría (el dato ya existe, falta la pantalla).
+1. ✅ ~~Migrar comandos al modelo pendiente/ACK~~ — resuelto 2026-08-12 (ver hito de sincronización).
+2. ✅ ~~Vista de comandos pendientes y su estado~~ — resuelto 2026-08-12.
+3. ✅ ~~Vista de diagnóstico técnico (firmware/hardware version, señal, batería, `lastSeenAt`)~~ — resuelto 2026-08-12.
+4. ✅ ~~Vista de eventos críticos / auditoría~~ — resuelto 2026-08-12.
 5. 🟠 Filtro por organización/flota.
 6. 🟡 Reforzar confirmación de comandos peligrosos si el cliente lo pide.
 
 ### Pista C — Backend / Seguridad
 
-1. 🔴 Redactar y publicar reglas de Realtime Database por rol/organización.
+1. ✅ ~~Redactar y publicar reglas de Realtime Database por rol~~ — resuelto 2026-08-12 (sin filtro por organización todavía, ver `docs/database-rules.md`). Pendiente operativo: sembrar el primer admin antes de desplegar.
 2. 🔴 Decidir y ejecutar: reconstruir `functions/` como Cloud Functions reales o mantener servicio propio desplegado (hoy es solo local).
 3. 🔴 Tests automatizados de la API de dispositivo (payloads válidos/inválidos, firma HMAC, expiración).
 4. 🟠 Restringir API keys de Google Maps.
@@ -154,8 +165,8 @@ Este es el cambio más importante del próximo ciclo porque hoy la app y el pane
 
 ### Pista D — Hardware / Firmware (seguimiento, ejecución fuera de este repo)
 
-0. 🔴 **Aclarar primero la contradicción SIM7600 vs. "sin módem definido"** (ver hallazgo crítico) — condiciona todo lo demás de esta pista.
-1. 🔴 **Decisión/confirmación con el cliente:** módulo SIM/celular (LTE/NB-IoT) — modelo exacto y bandas si el SIM7600 sigue vigente. Sin esto no arranca Fase 3.
+0. ✅ ~~Aclarar la contradicción SIM7600 vs. "sin módem definido"~~ — resuelto 2026-08-12 (ver Actualización en Hallazgo Crítico arriba).
+1. 🟠 Confirmar bandas exactas del módem A7670 (prototipo) contra el operador del piloto. Ya no bloquea el inicio de Fase 3, pero sí que el prototipo conecte en la práctica.
 2. 🟠 Definir pinout del STM32 (UART GNSS, UART/USB módem, GPIO actuadores, ADC voltaje/ignición).
 3. 🟠 Definir circuitos de sirena, humo y corta corriente (relés/MOSFETs optoaislados).
 4. 🟠 Definir botón físico y pulsaciones a nivel de hardware.
@@ -167,8 +178,8 @@ Este es el cambio más importante del próximo ciclo porque hoy la app y el pane
 ## 6. Mensaje Sugerido Para El Cliente
 
 - Software (app + panel + backend) tiene un plan concreto y puede avanzar en paralelo en 3 pistas ya en marcha.
-- El verdadero cuello de botella del proyecto completo es una decisión de hardware (módulo SIM/celular) — pero hay documentación contradictoria sobre si ya se eligió (SIM7600) o sigue sin definir. Se necesita esa respuesta esta semana, porque bloquea toda la Fase 3 en adelante.
-- Antes de cualquier demo con datos reales o usuarios externos, hay 3 tareas de seguridad no negociables: reglas de Realtime Database, restricción de API keys, y dejar de escribir actuadores directo desde la UI.
+- El bloqueo de hardware que frenaba la Fase 3 (elegir el módem celular) ya se resolvió: se eligió un módem económico (A7670, LTE Cat-1) para esta etapa de prototipo, dejando un módem más rápido (SIM7600) anotado como upgrade para una versión más profesional más adelante. Esto es coherente con el alcance actual del proyecto: un prototipo/MVP para validar el sistema completo, no un producto para fabricar en volumen.
+- Antes de cualquier demo con datos reales o usuarios externos, queda 1 tarea de seguridad no negociable: restricción de API keys de Google Maps. (Las otras dos — reglas de Realtime Database y dejar de escribir actuadores directo desde la UI — ya se resolvieron el 2026-08-12. Ojo: las reglas requieren sembrar un usuario admin manualmente antes de desplegarlas, ver `docs/database-rules.md`.)
 - Existen documentos previos (mayo 2026) que hablan de un flujo de comandos "cerrado" y reglas Firebase "versionadas" que no coinciden con el código actual — vale la pena preguntar si ese trabajo se hizo en otro lugar y se perdió, antes de asumir que hay que rehacerlo desde cero.
 
 ## 7. Plan De Pruebas (QA) — Base Para Demo
@@ -204,7 +215,8 @@ Pendiente: este plan de pruebas no está formalizado en el repo (`test/` solo ti
 
 ## 8. Pendiente De Este Documento
 
-- Resolver la contradicción sobre el SIM7600 con el equipo de hardware (bloquea decidir la urgencia real de la Pista D).
+- ~~Resolver la contradicción sobre el SIM7600 con el equipo de hardware~~ — resuelto 2026-08-12.
+- Confirmar bandas exactas del módem A7670 elegido contra el operador del piloto.
 - Confirmar si existen en algún lado los 4 documentos referenciados por los PDF (`development-guide`, `internal-user-manual`, `project-decisions-and-risks`, `delivery-log`) y si hay código asociado al "flujo de comandos cerrado" que no llegó a este repo.
 - Falta incorporar más documentación adicional si el cliente/equipo aporta más.
 - Falta estimar tiempos/esfuerzo por tarea una vez se prioricen con el cliente.
