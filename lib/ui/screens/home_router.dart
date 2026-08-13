@@ -19,10 +19,9 @@ class _HomeRouterState extends State<HomeRouter> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        Provider.of<VehiculoController>(
-          context,
-          listen: false,
-        ).cargarFlota(user.uid);
+        final vCtrl = Provider.of<VehiculoController>(context, listen: false);
+        vCtrl.cargarFlota(user.uid);
+        vCtrl.iniciarSeguimientoUsuario(user.uid);
       }
     });
   }

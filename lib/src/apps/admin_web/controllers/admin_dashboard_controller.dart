@@ -14,6 +14,7 @@ class AdminDashboardController extends ChangeNotifier {
   AdminDeviceViewData? _selectedDevice;
   String _searchQuery = '';
   String _statusFilter = 'TODOS';
+  String _organizationFilter = 'TODAS';
   bool _isFollowing = false;
 
   AdminDashboardController({DatabaseService? databaseService})
@@ -27,17 +28,28 @@ class AdminDashboardController extends ChangeNotifier {
 
   String get statusFilter => _statusFilter;
 
+  String get organizationFilter => _organizationFilter;
+
   bool get isFollowing => _isFollowing;
 
   int get alertCount => _devices.where((device) => device.isAlert).length;
 
   int get onlineCount => _devices.where((device) => device.isOnline).length;
 
+  /// Organizaciones distintas presentes en la flota actual, para armar el
+  /// filtro. Mientras exista una sola organización real (`first-protection`)
+  /// esto devuelve una lista de 1 elemento y la UI oculta el filtro — deja
+  /// de estar vacío solo cuando el modelo de datos realmente se usa para
+  /// vender a más de una empresa/flota.
+  List<String> get organizations =>
+      _devices.map((d) => d.organizationId).toSet().toList()..sort();
+
   List<AdminDeviceViewData> get filteredDevices => _devices
       .where(
         (device) =>
             device.matchesSearch(_searchQuery) &&
-            device.matchesStatus(_statusFilter),
+            device.matchesStatus(_statusFilter) &&
+            device.matchesOrganization(_organizationFilter),
       )
       .toList();
 
@@ -63,6 +75,12 @@ class AdminDashboardController extends ChangeNotifier {
   void setStatusFilter(String value) {
     if (_statusFilter == value) return;
     _statusFilter = value;
+    notifyListeners();
+  }
+
+  void setOrganizationFilter(String value) {
+    if (_organizationFilter == value) return;
+    _organizationFilter = value;
     notifyListeners();
   }
 
@@ -100,6 +118,10 @@ class AdminDashboardController extends ChangeNotifier {
   void _applyDeviceSnapshot(List<Map<String, dynamic>> devices) {
     try {
       _devices = devices.map(AdminDeviceViewData.fromMap).toList();
+      if (_organizationFilter != 'TODAS' &&
+          !organizations.contains(_organizationFilter)) {
+        _organizationFilter = 'TODAS';
+      }
       _refreshSelectedDevice();
       notifyListeners();
     } catch (error) {

@@ -7,6 +7,39 @@ class DeviceEventFormatter {
 
   static String describe(Map<String, dynamic> evento) {
     if (evento['source'] == 'comando') {
+      if (evento['tipo'] == 'posibleAlejamientoVehiculo') {
+        final distancia = evento['distanciaMetros'];
+        final sufijo = distancia is num
+            ? ' (${distancia.round()} m, en movimiento)'
+            : '';
+        return 'Posible alejamiento del vehículo$sufijo';
+      }
+
+      if (evento['tipo'] == 'vehicleMovedWhileArmed') {
+        final distancia = evento['distanciaMetros'];
+        final sufijo = distancia is num ? ' (${distancia.round()} m)' : '';
+        return 'Vehículo se movió estando armado$sufijo';
+      }
+
+      if (evento['tipo'] == 'modoArmadoActivado') {
+        return 'Modo estacionado/armado activado';
+      }
+      if (evento['tipo'] == 'modoArmadoDesactivado') {
+        return 'Modo estacionado/armado desactivado';
+      }
+
+      if (evento['tipo'] == 'geocercaSobrepasada') {
+        final distancia = evento['distanciaMetros'];
+        final sufijo = distancia is num ? ' (${distancia.round()} m del centro)' : '';
+        return 'El vehículo salió de la geocerca$sufijo';
+      }
+      if (evento['tipo'] == 'geocercaActivada') {
+        return 'Geocerca activada';
+      }
+      if (evento['tipo'] == 'geocercaDesactivada') {
+        return 'Geocerca desactivada';
+      }
+
       final campo = evento['campo']?.toString() ?? '';
       final valor = evento['valor'] == true;
       final campoLabel = switch (campo) {

@@ -3,7 +3,12 @@ import 'package:first_protection/core/models/device_command_model.dart';
 import 'package:first_protection/core/models/estado_dispositivo_model.dart';
 import 'package:first_protection/core/services/database_service.dart';
 import 'package:first_protection/core/utils/device_command_status_ui.dart';
+import 'package:first_protection/core/utils/distance_format.dart';
 import 'package:first_protection/core/utils/time_ago.dart';
+import 'package:first_protection/core/utils/vehicle_data.dart';
+import 'package:first_protection/core/widgets/custom_notification.dart';
+import 'package:first_protection/src/apps/client_mobile/ui/datos_propietario_screen.dart';
+import 'package:first_protection/src/apps/client_mobile/ui/geocerca_screen.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/historial_eventos_screen.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/mobile_login_screen.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/vincular_vehiculo_screen.dart';
@@ -104,6 +109,19 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.badge_outlined, color: Colors.white),
+            tooltip: "Mis datos",
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DatosPropietarioScreen(
+                  idDispositivo: estado.idDispositivo,
+                  alias: vehiculo.alias,
+                ),
+              ),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.history_rounded, color: Colors.white),
             tooltip: "Historial de eventos",
             onPressed: () => Navigator.push(
@@ -161,9 +179,30 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                               : BitmapDescriptor.hueOrange,
                         ),
                       ),
+                      if (vCtrl.posicionUsuario != null)
+                        Marker(
+                          markerId: const MarkerId('usuario'),
+                          position: LatLng(
+                            vCtrl.posicionUsuario!.latitude,
+                            vCtrl.posicionUsuario!.longitude,
+                          ),
+                          icon: BitmapDescriptor.defaultMarkerWithHue(
+                            BitmapDescriptor.hueAzure,
+                          ),
+                          zIndexInt: 1,
+                        ),
                     },
                   ),
                 ),
+                if (vCtrl.distanciaAlVehiculoMetros != null)
+                  Positioned(
+                    top: 16,
+                    left: 32,
+                    child: _buildDistanciaChip(
+                      vCtrl.distanciaAlVehiculoMetros!,
+                      vCtrl.alertaAlejamiento,
+                    ),
+                  ),
                 Positioned(
                   bottom: 30,
                   right: 30,
@@ -183,6 +222,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
               ],
             ),
           ),
+
+          if (vCtrl.alertaAlejamiento) _buildAlertaAlejamiento(),
+          if (vCtrl.alertaMovimientoArmado) _buildAlertaMovimientoArmado(),
+          if (vCtrl.alertaGeocerca) _buildAlertaGeocerca(),
 
           Expanded(
             flex: 5,
@@ -241,7 +284,17 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             _buildStatusIndicator(
               estado.protocoloActivo,
               estado.cortaCorriente,
+              estado.armado,
             ),
+
+            if (vCtrl.permisoUbicacionDenegado) ...[
+              const SizedBox(height: 10),
+              Text(
+                "Activa la ubicación para ver la cercanía con tu vehículo",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.roboto(color: Colors.white38, fontSize: 11),
+              ),
+            ],
 
             const SizedBox(height: 15),
 
@@ -311,6 +364,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 ),
               ],
             ),
+
+            const SizedBox(height: 15),
+
+            _buildModoArmadoControl(vCtrl, estado),
 
             const SizedBox(height: 20),
 
@@ -453,7 +510,217 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     );
   }
 
-  Widget _buildStatusIndicator(bool isAlert, bool isCut) {
+  Widget _buildDistanciaChip(double distanciaMetros, bool alerta) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: (alerta ? Colors.red : Colors.black).withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: alerta ? Colors.redAccent : Colors.white24,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.social_distance_rounded,
+            color: alerta ? Colors.redAccent : Colors.white70,
+            size: 14,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            "A ${formatDistanceMeters(distanciaMetros)} de ti",
+            style: GoogleFonts.roboto(
+              color: alerta ? Colors.redAccent : Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Aviso de la heurística básica de cercanía (ver
+  /// docs/physical-device-integration.md): el vehículo se aleja del usuario
+  /// mientras está en movimiento. No implica que `protocoloActivo` esté
+  /// encendido — es solo una señal para que el usuario revise y decida si
+  /// activa el protocolo de robo manualmente.
+  Widget _buildAlertaAlejamiento() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              "Tu vehículo se está alejando de ti en movimiento",
+              style: GoogleFonts.roboto(
+                color: Colors.redAccent,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Aviso de la heurística "vehiculoSeMovioEstandoArmado" (ver
+  /// docs/physical-device-integration.md): el vehículo se alejó del punto
+  /// donde se armó sin que el dueño lo autorizara — puede ser robo o
+  /// remolque de un vehículo estacionado.
+  Widget _buildAlertaMovimientoArmado() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.local_parking_rounded, color: Colors.redAccent, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              "Tu vehículo se movió estando armado — revisa qué pasó",
+              style: GoogleFonts.roboto(
+                color: Colors.redAccent,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Control de "modo estacionado/armado" (ver docs/physical-device-
+  /// integration.md, "Modos Del Sistema"). Armar guarda la posición actual
+  /// del vehículo como ancla; si luego se mueve más de lo esperado, dispara
+  /// la alerta de `_buildAlertaMovimientoArmado`. No requiere ACK del
+  /// dispositivo: es una bandera de monitoreo, no un actuador físico.
+  Widget _buildModoArmadoControl(VehiculoController vCtrl, EstadoDispositivo estado) {
+    final armado = estado.armado;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: armado
+            ? Colors.lightBlueAccent.withValues(alpha: 0.1)
+            : Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: armado
+              ? Colors.lightBlueAccent.withValues(alpha: 0.4)
+              : Colors.white.withValues(alpha: 0.05),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.local_parking_rounded,
+            color: armado ? Colors.lightBlueAccent : Colors.white38,
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "MODO ESTACIONADO",
+                  style: GoogleFonts.oswald(
+                    color: armado ? Colors.lightBlueAccent : Colors.white70,
+                    fontSize: 13,
+                    letterSpacing: 1,
+                  ),
+                ),
+                Text(
+                  armado
+                      ? "Avisamos si se mueve sin ti"
+                      : "Actívalo al dejar el auto estacionado",
+                  style: GoogleFonts.roboto(color: Colors.white38, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: armado,
+            activeThumbColor: Colors.lightBlueAccent,
+            onChanged: (nuevoValor) async {
+              HapticFeedback.selectionClick();
+              final error = await vCtrl.alternarModoArmado(nuevoValor);
+              if (!mounted) return;
+              if (error != null) {
+                FirstProtectionNotification.show(
+                  context: context,
+                  message: error,
+                  type: NotificationType.error,
+                );
+              } else {
+                FirstProtectionNotification.show(
+                  context: context,
+                  message: nuevoValor
+                      ? "Modo estacionado activado"
+                      : "Modo estacionado desactivado",
+                  type: NotificationType.success,
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Aviso de geocerca (ver docs/plan-de-trabajo.md Pista A): el vehículo
+  /// salió de la zona fija configurada por el usuario, sin importar si el
+  /// modo estacionado está activo o no.
+  Widget _buildAlertaGeocerca() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.share_location, color: Colors.redAccent, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              "Tu vehículo salió de la geocerca que configuraste",
+              style: GoogleFonts.roboto(
+                color: Colors.redAccent,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusIndicator(bool isAlert, bool isCut, bool isArmado) {
     Color color;
     String text;
     IconData icon;
@@ -466,6 +733,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       color = AppColors.primaryOrange;
       text = "MOTOR BLOQUEADO";
       icon = Icons.lock;
+    } else if (isArmado) {
+      color = Colors.lightBlueAccent;
+      text = "ESTACIONADO Y ARMADO";
+      icon = Icons.local_parking_rounded;
     } else {
       color = Colors.green;
       text = "SISTEMA SEGURO";
@@ -671,6 +942,21 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
+                                if (v.color.isNotEmpty) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: VehicleData.colorFor(v.color),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white24,
+                                        width: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                             trailing: esSeleccionado
@@ -725,6 +1011,34 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
+                if (vCtrl.vehiculoSeleccionado != null)
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => GeocercaScreen(
+                            idDispositivo:
+                                vCtrl.vehiculoSeleccionado!.idDispositivo,
+                            alias: vCtrl.vehiculoSeleccionado!.alias,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.share_location,
+                      color: Colors.white38,
+                      size: 18,
+                    ),
+                    label: Text(
+                      "GEOCERCA",
+                      style: GoogleFonts.roboto(
+                        color: Colors.white38,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 TextButton.icon(
                   onPressed: () => _handleLogout(context),
                   icon: const Icon(

@@ -1,6 +1,7 @@
 import 'dart:math'; // <--- 1. IMPORTANTE PARA GENERAR EL TOKEN
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:first_protection/core/theme/app_colors.dart';
+import 'package:first_protection/core/utils/vehicle_data.dart';
 import 'package:first_protection/core/widgets/custom_notification.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,6 +24,7 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
   final _marcaController = TextEditingController();
   final _modeloController = TextEditingController();
 
+  String? _colorSeleccionado;
   bool _procesando = false;
 
   @override
@@ -72,6 +74,7 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
           patente: patenteLimpia,
           marca: _marcaController.text.trim(),
           modelo: _modeloController.text.trim(),
+          color: _colorSeleccionado ?? '',
         );
 
         if (mounted) {
@@ -220,6 +223,9 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
                           icon: Icons.minor_crash_outlined,
                           hint: "Hilux 2024",
                         ),
+                        const SizedBox(height: 15),
+
+                        _buildColorSelector(),
 
                         const SizedBox(height: 50),
                         _buildSubmitButton(),
@@ -330,6 +336,66 @@ class _VincularVehiculoScreenState extends State<VincularVehiculoScreen> {
           vertical: 18,
         ),
       ),
+    );
+  }
+
+  Widget _buildColorSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 10),
+          child: Text(
+            "Color (opcional)",
+            style: TextStyle(color: Colors.white54, fontSize: 13),
+          ),
+        ),
+        Wrap(
+          spacing: 14,
+          runSpacing: 10,
+          children: VehicleData.colores.map((nombre) {
+            final seleccionado = _colorSeleccionado == nombre;
+            return GestureDetector(
+              onTap: () => setState(
+                () => _colorSeleccionado = seleccionado ? null : nombre,
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: VehicleData.colorFor(nombre),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: seleccionado
+                            ? AppColors.primaryOrange
+                            : Colors.white.withValues(alpha: 0.15),
+                        width: seleccionado ? 2.5 : 1,
+                      ),
+                    ),
+                    child: seleccionado
+                        ? const Icon(
+                            Icons.check,
+                            color: AppColors.primaryOrange,
+                            size: 16,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    nombre[0] + nombre.substring(1).toLowerCase(),
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 

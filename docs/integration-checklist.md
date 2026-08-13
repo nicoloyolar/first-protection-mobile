@@ -27,10 +27,10 @@ Este checklist mantiene el estado del MVP, backend y futuro dispositivo STM. Act
 - [x] Firma HMAC inicial para requests del dispositivo.
 - [x] Modo local con memoria para desarrollo.
 - [x] Escritura Firebase cuando corre como Cloud Function.
-- [ ] Tests automatizados de API.
-- [ ] Validacion avanzada de comandos peligrosos.
-- [ ] Rate limiting por dispositivo.
-- [ ] Rotacion de secretos por dispositivo.
+- [x] Tests automatizados de API (2026-08-12, `functions/test/device-api.test.js`).
+- [x] Validacion avanzada de comandos peligrosos (2026-08-12, forma/enum server-side; la politica de negocio de cuando permitir corta corriente sigue abierta).
+- [x] Rate limiting por dispositivo (2026-08-12, solo creacion de comandos; telemetria/eventos sin limitar todavia).
+- [ ] Rotacion de secretos por dispositivo (bloqueado: no existe aun un secreto por `deviceId`, solo uno global via env var).
 
 ## Simulador STM
 

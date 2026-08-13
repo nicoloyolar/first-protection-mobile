@@ -34,9 +34,9 @@ APP MÓVIL
         - domicilio
         - contacto emergencia
 
-    - integrar color en el vehículo 
-    - comentario random (tiene un foco malo) 
-    - optimizar slider 
+    - integrar color en el vehículo ✅
+    - comentario random (tiene un foco malo) ✅ (era pedir poder anotar señas particulares del vehículo para identificarlo en caso de robo, no un bug)
+    - optimizar slider ✅
 
     - registro de dispositivo / vehículo ✅
         

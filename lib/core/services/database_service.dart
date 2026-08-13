@@ -5,6 +5,7 @@ import '../models/app_user_profile.dart';
 import '../models/device_command_model.dart';
 import '../models/device_event_model.dart';
 import '../models/device_telemetry_model.dart';
+import '../models/live_location_model.dart';
 import '../models/vehiculo_model.dart';
 import '../models/estado_dispositivo_model.dart';
 
@@ -110,6 +111,7 @@ class DatabaseService {
     required String patente,
     required String marca,
     required String modelo,
+    String color = '',
     String organizationId = defaultOrganizationId,
   }) async {
     try {
@@ -126,11 +128,13 @@ class DatabaseService {
         'patente': patente,
         'marca': marca,
         'modelo': modelo,
+        'color': color,
       };
 
       actualizaciones['usuarios/$idUsuario/mis_vehiculos/$idVehiculo'] = true;
       actualizaciones['dispositivos/$idDispositivo/alias'] = alias;
       actualizaciones['dispositivos/$idDispositivo/patente'] = patente;
+      actualizaciones['dispositivos/$idDispositivo/color'] = color;
       actualizaciones['dispositivos/$idDispositivo/id'] = idDispositivo;
       actualizaciones['dispositivos/$idDispositivo/idVehiculo'] = idVehiculo;
       actualizaciones['dispositivos/$idDispositivo/idPropietario'] = idUsuario;
@@ -144,6 +148,229 @@ class DatabaseService {
     } catch (e) {
       return false;
     }
+  }
+
+  /// Registra la ubicación del teléfono del usuario en
+  /// `usuarios/{uid}/liveLocation`. Es la "ubicación del usuario" del modelo
+  /// de datos — nunca debe escribirse en `dispositivos/{id}`, que es
+  /// exclusivamente la ubicación oficial del vehículo reportada por el STM.
+  /// Ver docs/physical-device-integration.md.
+  Future<void> actualizarUbicacionUsuario({
+    required String uid,
+    required double lat,
+    required double lng,
+    double? accuracy,
+  }) async {
+    await _db.child('usuarios/$uid/liveLocation').set({
+      'lat': lat,
+      'lng': lng,
+      if (accuracy != null) 'accuracy': accuracy,
+      'timestamp': ServerValue.timestamp,
+    });
+  }
+
+  Stream<LiveLocation?> escucharUbicacionUsuario(String uid) {
+    return _db.child('usuarios/$uid/liveLocation').onValue.map((event) {
+      if (event.snapshot.value is! Map) return null;
+      return LiveLocation.fromMap(
+        Map<dynamic, dynamic>.from(event.snapshot.value as Map),
+      );
+    });
+  }
+
+  /// Deja registro de que el vehículo se alejó del usuario mientras estaba
+  /// en movimiento (heurística básica de "posible portonazo", ver
+  /// docs/physical-device-integration.md sección "Cercania Usuario-
+  /// Vehiculo"). Se escribe como evento de cliente, igual que un comando
+  /// remoto — no cambia `systemMode` del dispositivo, eso requiere una
+  /// decisión server-side (pendiente, ver docs/plan-de-trabajo.md).
+  Future<void> registrarAlertaProximidad({
+    required String idDispositivo,
+    required String actorUid,
+    required double distanciaMetros,
+    required double velocidadKmh,
+  }) async {
+    await _db.update({
+      'eventos/$idDispositivo/${_db.push().key}': {
+        'tipo': 'posibleAlejamientoVehiculo',
+        'distanciaMetros': distanciaMetros,
+        'velocidadKmh': velocidadKmh,
+        'actorUid': actorUid,
+        'actorRole': 'client',
+        'timestamp': ServerValue.timestamp,
+      },
+    });
+  }
+
+  /// Datos del propietario que hoy vive el cliente puede editar desde su
+  /// celular. Igual que en el panel admin (`device_inventory_screen.dart`),
+  /// estos campos viven planos en `dispositivos/{idDispositivo}` — no en
+  /// `usuarios/{uid}` — porque el registro original se pensó por vehículo,
+  /// no por cuenta.
+  Future<Map<String, String>> obtenerDatosPropietario(
+    String idDispositivo,
+  ) async {
+    final snapshot = await _db.child('dispositivos/$idDispositivo').get();
+    if (!snapshot.exists || snapshot.value is! Map) return {};
+
+    final data = Map<dynamic, dynamic>.from(snapshot.value as Map);
+    return {
+      'nombrePropietario': data['nombrePropietario']?.toString() ?? '',
+      'rutPropietario': data['rutPropietario']?.toString() ?? '',
+      'emailPropietario': data['emailPropietario']?.toString() ?? '',
+      'telefonoPropietario': data['telefonoPropietario']?.toString() ?? '',
+      'domicilioPropietario': data['domicilioPropietario']?.toString() ?? '',
+      'nombreEmergencia': data['nombreEmergencia']?.toString() ?? '',
+      'telefonoEmergencia': data['telefonoEmergencia']?.toString() ?? '',
+      'comentario': data['comentario']?.toString() ?? '',
+    };
+  }
+
+  Future<void> actualizarDatosPropietario({
+    required String idDispositivo,
+    required String nombre,
+    required String rut,
+    required String email,
+    required String telefono,
+    required String domicilio,
+    required String nombreEmergencia,
+    required String telefonoEmergencia,
+    required String comentario,
+  }) async {
+    await _db.child('dispositivos/$idDispositivo').update({
+      'nombrePropietario': nombre,
+      'rutPropietario': rut,
+      'emailPropietario': email,
+      'telefonoPropietario': telefono,
+      'domicilioPropietario': domicilio,
+      'nombreEmergencia': nombreEmergencia,
+      'telefonoEmergencia': telefonoEmergencia,
+      'comentario': comentario,
+    });
+  }
+
+  /// Activa o desactiva el modo estacionado/armado (ver "Modos Del Sistema"
+  /// en docs/physical-device-integration.md). Al armar, guarda la posición
+  /// actual del vehículo como ancla (`armedAt`) para poder detectar
+  /// movimiento no esperado mientras está desarmado el resto de la app.
+  /// No requiere ACK del dispositivo: no es un actuador físico, es una
+  /// bandera de monitoreo que decide el backend/app, no el STM.
+  Future<void> actualizarModoArmado({
+    required String idDispositivo,
+    required bool armado,
+    required String actorUid,
+    double? lat,
+    double? lng,
+  }) async {
+    final updates = <String, dynamic>{
+      'dispositivos/$idDispositivo/systemMode': armado ? 'armed' : 'normal',
+      'dispositivos/$idDispositivo/armedAt': armado && lat != null && lng != null
+          ? {'lat': lat, 'lng': lng, 'timestamp': ServerValue.timestamp}
+          : null,
+      'eventos/$idDispositivo/${_db.push().key}': {
+        'tipo': armado ? 'modoArmadoActivado' : 'modoArmadoDesactivado',
+        'actorUid': actorUid,
+        'actorRole': 'client',
+        'timestamp': ServerValue.timestamp,
+      },
+    };
+    await _db.update(updates);
+  }
+
+  /// Lee la posición actual del vehículo, para usarla como centro de la
+  /// geocerca sin depender del stream reactivo (ej. desde una pantalla de
+  /// configuración que se abre por fuera del vehículo seleccionado).
+  Future<Map<String, double>?> obtenerPosicionActualDispositivo(
+    String idDispositivo,
+  ) async {
+    final snapshot = await _db.child('dispositivos/$idDispositivo').get();
+    if (!snapshot.exists || snapshot.value is! Map) return null;
+    final data = Map<dynamic, dynamic>.from(snapshot.value as Map);
+    return {
+      'lat': _asDouble(data['latitud']),
+      'lng': _asDouble(data['longitud']),
+    };
+  }
+
+  Future<Map<String, dynamic>> obtenerGeocerca(String idDispositivo) async {
+    final snapshot = await _db.child('dispositivos/$idDispositivo/geofence').get();
+    if (!snapshot.exists || snapshot.value is! Map) {
+      return {'enabled': false, 'radiusMeters': 2000.0};
+    }
+    final data = Map<dynamic, dynamic>.from(snapshot.value as Map);
+    return {
+      'enabled': data['enabled'] == true,
+      'centerLat': data['centerLat'] == null ? null : _asDouble(data['centerLat']),
+      'centerLng': data['centerLng'] == null ? null : _asDouble(data['centerLng']),
+      'radiusMeters': data['radiusMeters'] == null ? 2000.0 : _asDouble(data['radiusMeters']),
+    };
+  }
+
+  /// Configura la geocerca (zona fija, independiente del modo armado y de
+  /// la ubicación del usuario — ver docs/plan-de-trabajo.md Pista A). No
+  /// requiere ACK del dispositivo: no es un actuador físico.
+  Future<void> actualizarGeocerca({
+    required String idDispositivo,
+    required bool enabled,
+    double? centerLat,
+    double? centerLng,
+    required double radiusMeters,
+    required String actorUid,
+  }) async {
+    await _db.update({
+      'dispositivos/$idDispositivo/geofence': {
+        'enabled': enabled,
+        if (centerLat != null) 'centerLat': centerLat,
+        if (centerLng != null) 'centerLng': centerLng,
+        'radiusMeters': radiusMeters,
+      },
+      'eventos/$idDispositivo/${_db.push().key}': {
+        'tipo': enabled ? 'geocercaActivada' : 'geocercaDesactivada',
+        'actorUid': actorUid,
+        'actorRole': 'client',
+        'timestamp': ServerValue.timestamp,
+      },
+    });
+  }
+
+  Future<void> registrarAlertaGeocerca({
+    required String idDispositivo,
+    required String actorUid,
+    required double distanciaMetros,
+    required double radioMetros,
+  }) async {
+    await _db.update({
+      'eventos/$idDispositivo/${_db.push().key}': {
+        'tipo': 'geocercaSobrepasada',
+        'distanciaMetros': distanciaMetros,
+        'radioMetros': radioMetros,
+        'actorUid': actorUid,
+        'actorRole': 'client',
+        'timestamp': ServerValue.timestamp,
+      },
+    });
+  }
+
+  /// Registra que el vehículo se movió más de lo esperado estando armado
+  /// (posible robo/remolque de un vehículo que se dejó estacionado). Ver
+  /// docs/physical-device-integration.md, "Cercania Usuario-Vehiculo".
+  /// Reutiliza el nombre del `DeviceEventType.vehicleMovedWhileArmed` ya
+  /// existente para que el formatter compartido lo reconozca igual que si
+  /// viniera del dispositivo físico.
+  Future<void> registrarAlertaModoArmado({
+    required String idDispositivo,
+    required String actorUid,
+    required double distanciaMetros,
+  }) async {
+    await _db.update({
+      'eventos/$idDispositivo/${_db.push().key}': {
+        'tipo': 'vehicleMovedWhileArmed',
+        'distanciaMetros': distanciaMetros,
+        'actorUid': actorUid,
+        'actorRole': 'client',
+        'timestamp': ServerValue.timestamp,
+      },
+    });
   }
 
   Future<void> actualizarEstadoMando(
@@ -332,13 +559,43 @@ class DatabaseService {
 
     return data.entries.where((entry) => entry.value is Map).map((entry) {
       final value = Map<dynamic, dynamic>.from(entry.value as Map);
+      final tipo = value['tipo']?.toString() ?? 'comandoRemoto';
+
+      if (tipo == 'posibleAlejamientoVehiculo' ||
+          tipo == 'vehicleMovedWhileArmed' ||
+          tipo == 'geocercaSobrepasada') {
+        return <String, dynamic>{
+          'source': 'comando',
+          'tipo': tipo,
+          'distanciaMetros': _asDouble(value['distanciaMetros']),
+          'radioMetros': _asDouble(value['radioMetros']),
+          'velocidadKmh': _asDouble(value['velocidadKmh']),
+          'actorRole': value['actorRole']?.toString(),
+          'timestamp': _asInt(value['timestamp']),
+          'severidad': 'critical',
+        };
+      }
+
+      if (tipo == 'modoArmadoActivado' ||
+          tipo == 'modoArmadoDesactivado' ||
+          tipo == 'geocercaActivada' ||
+          tipo == 'geocercaDesactivada') {
+        return <String, dynamic>{
+          'source': 'comando',
+          'tipo': tipo,
+          'actorRole': value['actorRole']?.toString(),
+          'timestamp': _asInt(value['timestamp']),
+          'severidad': 'info',
+        };
+      }
+
       final campo = value['campo']?.toString() ?? '';
       final valor = value['valor'] == true;
       final esCritico = campo == 'cortaCorriente' && valor;
 
       return <String, dynamic>{
         'source': 'comando',
-        'tipo': value['tipo']?.toString() ?? 'comandoRemoto',
+        'tipo': tipo,
         'campo': campo,
         'valor': valor,
         'actorRole': value['actorRole']?.toString(),

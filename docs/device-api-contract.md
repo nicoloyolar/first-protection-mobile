@@ -290,13 +290,15 @@ Cuando app y panel ya consuman el esquema nuevo, los campos planos pueden quedar
 
 ## Validaciones Minimas Del Backend
 
-- Rechazar `deviceId` desconocido.
-- Rechazar firma invalida.
-- Rechazar comandos expirados.
-- No aceptar timestamps muy antiguos.
-- Ignorar `sequence` repetidos.
-- Validar rangos de latitud, longitud, voltaje y velocidad.
-- Registrar todos los comandos y eventos criticos.
+Estado real en `functions/index.js`, verificado con `functions/test/device-api.test.js` (2026-08-12):
+
+- ✅ Rechazar firma invalida.
+- ✅ Rechazar comandos expirados.
+- ✅ No aceptar timestamps muy antiguos (ventana de 5 minutos).
+- ✅ Ignorar `sequence` repetidos o menores al ultimo procesado (por dispositivo).
+- ✅ Validar rangos de latitud, longitud, velocidad y voltaje.
+- ✅ Registrar todos los comandos y eventos criticos (`memoryStore` local; en Firebase real via `device_commands`/`device_events`).
+- 🔴 Rechazar `deviceId` desconocido: **no implementado**. Hoy cualquier `deviceId` nuevo se crea implicitamente en el primer POST de telemetria/evento — no hay una lista de dispositivos provisionados contra la cual validar. Pendiente de decidir junto con el proceso de alta de dispositivos (ver `docs/plan-de-trabajo.md`, Pista C).
 
 ## MQTT Futuro
 

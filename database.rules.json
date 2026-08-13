@@ -13,6 +13,10 @@
           "$vehicleId": {
             ".write": "auth != null && (auth.uid === $uid || root.child('usuarios/' + auth.uid + '/role').val() === 'admin' || root.child('usuarios/' + auth.uid + '/role').val() === 'operator' || root.child('usuarios/' + auth.uid + '/role').val() === 'technician')"
           }
+        },
+
+        "liveLocation": {
+          ".write": "auth != null && auth.uid === $uid && newData.hasChildren(['lat', 'lng', 'timestamp']) && newData.child('lat').isNumber() && newData.child('lng').isNumber()"
         }
       }
     },
@@ -53,11 +57,47 @@
         "patente": {
           ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
         },
+        "color": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
         "ultimaVinculacion": {
           ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
         },
         "ultimoComando": {
           ".write": "auth != null && root.child('vehicles_meta/' + $deviceId + '/idPropietario').val() === auth.uid"
+        },
+        "systemMode": {
+          ".write": "auth != null && root.child('vehicles_meta/' + $deviceId + '/idPropietario').val() === auth.uid && (newData.val() === 'normal' || newData.val() === 'armed')"
+        },
+        "armedAt": {
+          ".write": "auth != null && root.child('vehicles_meta/' + $deviceId + '/idPropietario').val() === auth.uid && (!newData.exists() || (newData.hasChildren(['lat', 'lng', 'timestamp']) && newData.child('lat').isNumber() && newData.child('lng').isNumber()))"
+        },
+        "nombrePropietario": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "rutPropietario": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "emailPropietario": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "telefonoPropietario": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "domicilioPropietario": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "nombreEmergencia": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "telefonoEmergencia": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "comentario": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid"
+        },
+        "geofence": {
+          ".write": "auth != null && newData.parent().child('idPropietario').val() === auth.uid && (!newData.exists() || (newData.child('enabled').isBoolean() && newData.child('radiusMeters').isNumber() && newData.child('radiusMeters').val() > 0 && (!newData.child('centerLat').exists() || newData.child('centerLat').isNumber()) && (!newData.child('centerLng').exists() || newData.child('centerLng').isNumber())))"
         }
       }
     },

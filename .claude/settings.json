@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter --version)",
+      "Bash(git stash *)",
+      "Bash(flutter test *)",
+      "Bash(npm test *)",
+      "Bash(node --test ./test)",
+      "Bash(node --test)",
+      "Bash([ -f \"$KS\" ])",
+      "Bash(keytool -list -v -keystore /Users/nicolasloyola/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android)",
+      "Bash(timeout 45 firebase emulators:start --only functions)",
+      "Bash(firebase emulators:start --only functions)",
+      "Bash(echo \"PID:$!\")",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" \"http://127.0.0.1:5001/first-protection/us-central1/deviceApi/api/v1/devices/GPS-EMUTEST/commands/next\")",
+      "Bash(curl -s \"http://127.0.0.1:5001/\")",
+      "Bash(curl -s \"http://127.0.0.1:4000/functions\" -o /dev/null -w \"ui:%{http_code}\\\\n\")",
+      "Bash(curl -s \"http://127.0.0.1:4400/emulators\")",
+      "Bash(pkill -f \"firebase emulators:start\")",
+      "Bash(node -e ' *)",
+      "Bash(curl -s -w '\\\\nHTTP %{http_code}\\\\n' -X POST -H 'Content-Type: application/json' -d '{\"target\":\"humo\",\"value\":true}' http://127.0.0.1:5001/first-protection/us-central1/deviceApi/api/v1/devices/GPS-EMUTEST/commands)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" \"http://127.0.0.1:5001/first-protection/us-central1/deviceApi/api/v1/devices/GPS-EMUTEST2/commands/next\")",
+      "Bash(curl -s -w '\\\\nHTTP %{http_code}\\\\n' -X POST -H 'Content-Type: application/json' -d '{\"target\":\"humo\",\"value\":true}' http://127.0.0.1:5001/first-protection/us-central1/deviceApi/api/v1/devices/GPS-EMUTEST2/commands)",
+      "Bash(java -version)",
+      "Bash(/usr/libexec/java_home -V)",
+      "Bash(brew --prefix openjdk@21)",
+      "Bash(ls \"$\\(brew --prefix openjdk@21 2>/dev/null\\)/libexec/openjdk.jdk/Contents/Home/bin/java\")",
+      "Bash(curl -s \"http://127.0.0.1:9000/dispositivos/GPS-EMULOCAL.json\")",
+      "Bash(firebase database:get /dispositivos/GPS-EMULOCAL)",
+      "Bash(firebase database:get /dispositivos --pretty)",
+      "Bash(firebase database:get /device_commands --pretty)",
+      "Bash(firebase database:remove /device_commands/GPS-EMUTEST2 -y)",
+      "Bash(firebase database:get /device_commands/GPS-EMUTEST2)",
+      "Bash(firebase database:remove /device_commands/GPS-EMUTEST2 --force)"
+    ]
+  }
+}

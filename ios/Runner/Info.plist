@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>First Protection usa tu ubicación para mostrar qué tan cerca estás de tu vehículo y detectar alejamientos sospechosos.</string>
 </dict>
 </plist>

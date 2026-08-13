@@ -3,11 +3,14 @@
 const crypto = require("crypto");
 const http = require("http");
 
-let functions = null;
+let onRequestV2 = null;
 let admin = null;
 
 try {
-  functions = require("firebase-functions");
+  // 2a gen (Cloud Run por debajo) — coincide con la deteccion de entorno de
+  // getDb() mas abajo, que usa process.env.K_SERVICE (solo existe en 2a
+  // gen) para saber si esta corriendo desplegado de verdad o local.
+  onRequestV2 = require("firebase-functions/v2/https").onRequest;
   admin = require("firebase-admin");
 } catch (error) {
   // Local smoke tests can run without loading Firebase tooling.
@@ -33,7 +36,35 @@ const memoryStore = {
   telemetry: new Map(),
   events: new Map(),
   commands: new Map(),
+  lastSequence: new Map(),
+  commandTimestamps: new Map(),
 };
+
+// Espejo de los enums Dart en device_command_model.dart — mantener
+// sincronizado si se agregan tipos/targets nuevos.
+const COMMAND_TYPES = new Set([
+  "setActuator",
+  "setSystemMode",
+  "requestTelemetryNow",
+  "restartDevice",
+  "updateConfig",
+]);
+const COMMAND_TARGETS = new Set([
+  "humo",
+  "sirena",
+  "cortaCorriente",
+  "protocoloActivo",
+  "systemMode",
+  "telemetry",
+  "device",
+]);
+const ACTUATOR_TARGETS = new Set(["humo", "sirena", "cortaCorriente", "protocoloActivo"]);
+
+// Ver docs/plan-de-trabajo.md Pista C — protege la creacion de comandos
+// (el actuador mas sensible es cortaCorriente) de un cliente comprometido
+// o con un bug que intente espamear al dispositivo.
+const COMMAND_RATE_LIMIT_WINDOW_MS = 10 * 1000;
+const COMMAND_RATE_LIMIT_MAX = 5;
 
 function nowMs() {
   return Date.now();
@@ -44,6 +75,28 @@ function nowSec() {
 }
 
 function parseJsonBody(req) {
+  // Bajo Cloud Functions (Functions Framework / Express de por medio), el
+  // body ya viene leido del socket y parseado ANTES de que nuestro handler
+  // se ejecute — el stream original queda consumido. Intentar releerlo con
+  // req.on('data'/'end') como si fuera un http.IncomingMessage crudo nunca
+  // resuelve (se vio como ECONNRESET real contra el emulador de Functions).
+  // `req.rawBody` es la señal de que estamos en ese entorno: lo expone el
+  // Functions Framework con los bytes exactos, necesarios para verificar
+  // la firma HMAC igual que si los hubieramos leido nosotros mismos.
+  if (req.rawBody !== undefined) {
+    const rawBodyText = req.rawBody ? req.rawBody.toString("utf8") : "";
+    if (!rawBodyText) return Promise.resolve({});
+
+    if (req.body !== undefined && req.body !== null) {
+      return Promise.resolve({ body: req.body, rawBodyText });
+    }
+    try {
+      return Promise.resolve({ body: JSON.parse(rawBodyText), rawBodyText });
+    } catch (error) {
+      return Promise.reject(new Error("Invalid JSON body"));
+    }
+  }
+
   return new Promise((resolve, reject) => {
     let raw = "";
     req.on("data", (chunk) => {
@@ -148,6 +201,7 @@ function validateDeviceRequest(req, rawBodyText, deviceId) {
 
 function validateTelemetry(payload) {
   const location = payload.location || {};
+  const power = payload.power || {};
   const lat = Number(location.lat);
   const lng = Number(location.lng);
 
@@ -160,7 +214,62 @@ function validateTelemetry(payload) {
   if (!Number.isFinite(Number(payload.sequence))) {
     return "sequence is required";
   }
+  // Rangos de sanidad para speedKmh/vehicleVoltage, ver
+  // docs/device-api-contract.md "Validaciones Minimas Del Backend". No son
+  // obligatorios (compatibilityDeviceState ya los trata como 0 si faltan),
+  // pero si vienen, no deben ser basura de sensor/GPS.
+  if (location.speedKmh !== undefined) {
+    const speedKmh = Number(location.speedKmh);
+    if (!Number.isFinite(speedKmh) || speedKmh < 0 || speedKmh > 300) {
+      return "location.speedKmh out of range";
+    }
+  }
+  if (power.vehicleVoltage !== undefined) {
+    const vehicleVoltage = Number(power.vehicleVoltage);
+    if (!Number.isFinite(vehicleVoltage) || vehicleVoltage < 0 || vehicleVoltage > 60) {
+      return "power.vehicleVoltage out of range";
+    }
+  }
   return null;
+}
+
+/// Validacion server-side de comandos peligrosos (docs/plan-de-trabajo.md
+/// Pista C: "sin validacion avanzada de comandos en el backend, hoy vive
+/// solo en la UI"). No decide politica de negocio (ej. cuando se permite
+/// cortar corriente en movimiento sigue abierto, ver
+/// physical-device-integration.md) — solo rechaza payloads mal formados o
+/// con enums desconocidos antes de que lleguen a `device_commands/`.
+function validateCommandPayload(payload) {
+  const type = payload.type || "setActuator";
+  if (!COMMAND_TYPES.has(type)) {
+    return `type invalido: ${type}`;
+  }
+  if (!payload.target || !COMMAND_TARGETS.has(payload.target)) {
+    return `target invalido: ${payload.target}`;
+  }
+  if (type === "setActuator") {
+    if (!ACTUATOR_TARGETS.has(payload.target)) {
+      return `target '${payload.target}' no es un actuador valido para setActuator`;
+    }
+    if (typeof payload.value !== "boolean") {
+      return "value debe ser boolean para setActuator";
+    }
+  }
+  return null;
+}
+
+/// Rate limit simple de ventana deslizante por dispositivo, solo sobre
+/// creacion de comandos (la superficie mas sensible: humo/sirena/corta
+/// corriente). No cubre telemetria/eventos ni rotacion de deviceSecret —
+/// ver nota en docs/plan-de-trabajo.md.
+function commandRateLimited(deviceId) {
+  const now = nowMs();
+  const timestamps = (memoryStore.commandTimestamps.get(deviceId) || []).filter(
+    (timestamp) => now - timestamp < COMMAND_RATE_LIMIT_WINDOW_MS,
+  );
+  timestamps.push(now);
+  memoryStore.commandTimestamps.set(deviceId, timestamps);
+  return timestamps.length > COMMAND_RATE_LIMIT_MAX;
 }
 
 function compatibilityDeviceState(deviceId, telemetry) {
@@ -216,7 +325,35 @@ async function getDb() {
   return admin.database();
 }
 
+// El Admin SDK real rechaza cualquier `undefined` en un update() (error
+// "values argument contains undefined" — se vio contra la base de datos
+// real al probar el emulador de Functions, ver docs/plan-de-trabajo.md).
+// `telemetry.power`/`.location.speedKmh` pueden faltar (son opcionales en
+// el contrato), así que hay que omitir la clave en vez de escribirla como
+// `undefined`. Funcion pura y exportada para poder testearla sin DB real.
+function buildHeartbeatMetadata(telemetry) {
+  const metadata = { sequence: telemetry.sequence };
+  if (telemetry.location && telemetry.location.speedKmh !== undefined) {
+    metadata.speedKmh = telemetry.location.speedKmh;
+  }
+  if (telemetry.power && telemetry.power.vehicleVoltage !== undefined) {
+    metadata.vehicleVoltage = telemetry.power.vehicleVoltage;
+  }
+  return metadata;
+}
+
 async function saveTelemetry(deviceId, telemetry) {
+  // "Ignorar sequence repetidos" (docs/device-api-contract.md): un reintento
+  // del STM por timeout de red no debe pisar un estado mas nuevo que ya
+  // llego. Se responde 200 igual (idempotente para el dispositivo), pero no
+  // se reprocesa el payload viejo/duplicado.
+  const incomingSequence = Number(telemetry.sequence);
+  const lastSequence = memoryStore.lastSequence.get(deviceId);
+  if (typeof lastSequence === "number" && incomingSequence <= lastSequence) {
+    return;
+  }
+  memoryStore.lastSequence.set(deviceId, incomingSequence);
+
   const state = compatibilityDeviceState(deviceId, telemetry);
   memoryStore.devices.set(deviceId, state);
   pushToMapList(memoryStore.telemetry, deviceId, telemetry);
@@ -233,11 +370,7 @@ async function saveTelemetry(deviceId, telemetry) {
       severity: "info",
       timestamp: telemetry.timestamp || nowSec(),
       location: telemetry.location || null,
-      metadata: {
-        sequence: telemetry.sequence,
-        speedKmh: telemetry.location && telemetry.location.speedKmh,
-        vehicleVoltage: telemetry.power && telemetry.power.vehicleVoltage,
-      },
+      metadata: buildHeartbeatMetadata(telemetry),
     },
   });
 }
@@ -433,6 +566,18 @@ async function handleApiRequest(req, res) {
     }
 
     if (req.method === "POST" && route.resource === "commands" && !route.commandId) {
+      const validationError = validateCommandPayload(body);
+      if (validationError) {
+        sendJson(res, 422, { ok: false, error: validationError });
+        return;
+      }
+      if (commandRateLimited(route.deviceId)) {
+        sendJson(res, 429, {
+          ok: false,
+          error: `Demasiados comandos para ${route.deviceId}, esperar antes de reintentar`,
+        });
+        return;
+      }
       const command = await createCommand(route.deviceId, body);
       sendJson(res, 201, { ok: true, command });
       return;
@@ -475,10 +620,6 @@ async function smokeTest() {
   console.log("Smoke test OK", req.url);
 }
 
-if (functions && admin) {
-  exports.deviceApi = functions.https.onRequest(handleApiRequest);
-}
-
 if (require.main === module) {
   if (process.argv.includes("--smoke-test")) {
     smokeTest().catch((error) => {
@@ -494,4 +635,30 @@ module.exports = {
   handleApiRequest,
   startLocalServer,
   memoryStore,
+  signBody,
+  DEFAULT_DEVICE_SECRET,
+  buildHeartbeatMetadata,
 };
+
+// IMPORTANTE: esto tiene que ir DESPUES de `module.exports = {...}` de
+// arriba. `module.exports = {...}` reemplaza el objeto de exports entero;
+// si `exports.deviceApi` se asignaba antes de esa linea (como pasaba en la
+// version anterior de este archivo), quedaba pisado y la Cloud Function
+// nunca se registraba — bug real, no solo cosmetico, encontrado corriendo
+// el emulador de Functions (`firebase emulators:start --only functions`)
+// y viendo que devolvia 0 funciones en la discovery de /__/functions.yaml.
+if (onRequestV2 && admin) {
+  module.exports.deviceApi = onRequestV2(
+    {
+      // El STM reintenta con backoff propio (ver docs/physical-device-
+      // integration.md, "Reintentos Y Offline") — no hace falta que Cloud
+      // Functions agregue sus propios reintentos automaticos encima.
+      retry: false,
+      // 0 = sin costo cuando nadie usa la API (plan gratuito), a costa de
+      // un cold start ocasional. Subir a 1 si el cold start se nota en una
+      // demo en vivo — eso sí tiene costo fijo mensual.
+      minInstances: 0,
+    },
+    handleApiRequest,
+  );
+}

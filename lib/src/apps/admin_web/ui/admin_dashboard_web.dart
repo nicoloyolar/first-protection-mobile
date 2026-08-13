@@ -276,6 +276,26 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
               ],
             ),
           ),
+
+          // Filtro por organización/flota: el modelo de datos ya soporta
+          // multi-organización, pero la UI solo la muestra cuando hay más
+          // de una organización real en la flota — con una sola, el filtro
+          // no aporta nada y solo ensucia el panel.
+          if (_dashboardController.organizations.length > 1) ...[
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: [
+                  _organizationChip("TODAS"),
+                  ..._dashboardController.organizations.map(
+                    _organizationChip,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -306,6 +326,47 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
                         ? Colors.redAccent
                         : Colors.white38),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _organizationChip(String organizationId) {
+    final isSelected = _dashboardController.organizationFilter == organizationId;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: () => _dashboardController.setOrganizationFilter(organizationId),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Colors.blueAccent.withValues(alpha: 0.25)
+                : Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? Colors.blueAccent : Colors.white10,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.apartment_rounded,
+                size: 11,
+                color: isSelected ? Colors.blueAccent : Colors.white24,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                organizationId,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.blueAccent : Colors.white38,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1066,43 +1127,56 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     bool value,
     String label,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF141414),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: Text(
-          value ? "Activar $label" : "Desactivar $label",
-          style: GoogleFonts.oswald(color: AppColors.primaryOrange),
-        ),
-        content: Text(
-          "Unidad: ${info['alias'] ?? info['id']}\nPatente: ${info['patente'] ?? 'S/P'}",
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              "CANCELAR",
-              style: TextStyle(color: Colors.white38),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryOrange,
-            ),
-            child: const Text(
-              "CONFIRMAR",
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
+    // Corta corriente es el único actuador que puede ser peligroso en el
+    // sentido físico (inmovilizar un vehículo en marcha) — ver
+    // docs/plan-de-trabajo.md Pista B. Desactivarlo (restaurar el motor) es
+    // la acción segura/de recuperación, así que solo se refuerza el activar.
+    final esCorteCritico = field == 'cortaCorriente' && value == true;
+
+    bool? confirmed;
+    if (esCorteCritico) {
+      confirmed = await _confirmarCorteCorrienteReforzado(info);
+    } else {
+      confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF141414),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
               ),
+              title: Text(
+                value ? "Activar $label" : "Desactivar $label",
+                style: GoogleFonts.oswald(color: AppColors.primaryOrange),
+              ),
+              content: Text(
+                "Unidad: ${info['alias'] ?? info['id']}\nPatente: ${info['patente'] ?? 'S/P'}",
+                style: const TextStyle(color: Colors.white70),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text(
+                    "CANCELAR",
+                    style: TextStyle(color: Colors.white38),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryOrange,
+                  ),
+                  child: const Text(
+                    "CONFIRMAR",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
-    );
+      );
+    }
 
     if (confirmed != true) return;
 
@@ -1112,6 +1186,138 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
       value: value,
       actorRole: 'admin',
     );
+  }
+
+  /// Segunda capa de confirmación exclusiva para activar el corte de
+  /// corriente: el admin tiene que escribir la patente de la unidad para
+  /// habilitar el botón. Si el último dato de velocidad conocido es mayor a
+  /// 0, se agrega una advertencia explícita de que el vehículo podría estar
+  /// en movimiento. Esto no bloquea la acción ni decide política de negocio
+  /// (eso sigue abierto, ver `physical-device-integration.md`) — solo hace
+  /// más difícil que sea un click accidental.
+  Future<bool?> _confirmarCorteCorrienteReforzado(
+    Map<String, dynamic> info,
+  ) async {
+    final patente = (info['patente'] ?? 'S/P').toString();
+    final velocidad = (info['velocidad'] is num)
+        ? (info['velocidad'] as num).toDouble()
+        : 0.0;
+    final controller = TextEditingController();
+
+    try {
+      return await showDialog<bool>(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setModalState) {
+            final habilitado =
+                controller.text.trim().toUpperCase() == patente.toUpperCase();
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF141414),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Cortar corriente",
+                      style: GoogleFonts.oswald(color: Colors.redAccent),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Unidad: ${info['alias'] ?? info['id']}\nPatente: $patente",
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  if (velocidad > 0) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.redAccent.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Text(
+                        "El último dato conocido muestra ${velocidad.toStringAsFixed(1)} km/h — "
+                        "el vehículo podría estar en movimiento.",
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Text(
+                    "Escribe la patente ($patente) para confirmar:",
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.characters,
+                    style: const TextStyle(color: Colors.white),
+                    onChanged: (_) => setModalState(() {}),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text(
+                    "CANCELAR",
+                    style: TextStyle(color: Colors.white38),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: habilitado
+                      ? () => Navigator.pop(context, true)
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    disabledBackgroundColor: Colors.white10,
+                  ),
+                  child: const Text(
+                    "CORTAR CORRIENTE",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
   Future<void> _logout() async {

@@ -8,7 +8,8 @@
   },
   "scripts": {
     "serve:device-api": "node index.js",
-    "test:smoke": "node index.js --smoke-test"
+    "test:smoke": "node index.js --smoke-test",
+    "test": "node --test"
   },
   "dependencies": {
     "firebase-admin": "^12.7.0",

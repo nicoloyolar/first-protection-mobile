@@ -71,6 +71,32 @@ Principios del diseño:
 - **Auditoría inmutable.** En `eventos/{deviceId}/{eventId}` solo se permite
   crear (`!data.exists()`), nunca editar ni borrar un evento ya registrado
   — ni siquiera un admin.
+- **El usuario puede reportar su propia ubicación.** En `usuarios/{uid}/
+  liveLocation` el dueño de la cuenta (`auth.uid === $uid`) puede escribir
+  su posición (`lat`/`lng`/`timestamp` obligatorios), pero nadie más puede
+  tocar ese nodo salvo los roles internos vía el `.write` general de
+  `usuarios/{uid}`. Es la base de la heurística de cercanía usuario-vehículo
+  (2026-08-12, ver `docs/plan-de-trabajo.md`).
+- **El dueño del vehículo puede editar sus propios datos de contacto.** En
+  `dispositivos/{deviceId}/nombrePropietario`, `rutPropietario`,
+  `emailPropietario`, `telefonoPropietario`, `domicilioPropietario`,
+  `nombreEmergencia` y `telefonoEmergencia`, el dueño puede escribir (mismo
+  patrón que `alias`/`patente`). No hay `.validate` de formato en las
+  reglas — la validación de forma (RUT, 8 dígitos de teléfono, etc.) vive
+  en la UI de la app, igual que en el panel admin (2026-08-12).
+- **El dueño del vehículo puede configurar su geocerca.** En
+  `dispositivos/{deviceId}/geofence` el dueño puede escribir, con
+  `.validate` mínimo: `enabled` debe ser booleano, `radiusMeters` debe ser
+  número > 0, y si vienen `centerLat`/`centerLng` deben ser números. Es
+  independiente del modo armado — no requiere que el sistema esté armado
+  para estar activa (2026-08-12).
+- **El dueño del vehículo puede armar/desarmar el modo estacionado.** En
+  `dispositivos/{deviceId}/systemMode` y `.../armedAt`, el dueño
+  (`vehicles_meta/{deviceId}/idPropietario === auth.uid`) puede escribir,
+  pero `systemMode` solo acepta los valores `normal`/`armed` (no puede
+  escribir estados arbitrarios) y `armedAt` exige forma `{lat, lng,
+  timestamp}` o borrarse. No requiere ACK del dispositivo porque no es un
+  actuador físico — es una bandera de monitoreo (2026-08-12).
 
 ## Qué NO Cubre Todavía (simplificaciones a propósito, alcance MVP)
 

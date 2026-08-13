@@ -11,6 +11,7 @@ class AdminDeviceViewData {
   final bool humo;
   final bool protocoloActivo;
   final bool cortaCorriente;
+  final String organizationId;
 
   AdminDeviceViewData({
     required this.raw,
@@ -23,6 +24,7 @@ class AdminDeviceViewData {
     required this.humo,
     required this.protocoloActivo,
     required this.cortaCorriente,
+    required this.organizationId,
   });
 
   factory AdminDeviceViewData.fromMap(Map<String, dynamic> data) {
@@ -39,6 +41,9 @@ class AdminDeviceViewData {
       humo: data['humo'] == true,
       protocoloActivo: data['protocoloActivo'] == true,
       cortaCorriente: data['cortaCorriente'] == true,
+      organizationId: data['organizationId']?.toString().trim().isNotEmpty == true
+          ? data['organizationId'].toString()
+          : 'first-protection',
     );
   }
 
@@ -67,6 +72,11 @@ class AdminDeviceViewData {
     }
   }
 
+  bool matchesOrganization(String organizationFilter) {
+    return organizationFilter == 'TODAS' ||
+        organizationId == organizationFilter;
+  }
+
   Map<String, dynamic> toMap() => {
     ...raw,
     'id': id,
@@ -78,6 +88,7 @@ class AdminDeviceViewData {
     'humo': humo,
     'protocoloActivo': protocoloActivo,
     'cortaCorriente': cortaCorriente,
+    'organizationId': organizationId,
   };
 
   static double _asDouble(dynamic value) {
