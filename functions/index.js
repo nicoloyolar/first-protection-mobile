@@ -313,6 +313,39 @@ function getCommandQueue(deviceId) {
   return memoryStore.commands.get(deviceId);
 }
 
+// Bug real encontrado el 2026-08-19 al probar por primera vez contra el
+// deviceApi ya desplegado (ver docs/plan-de-trabajo.md): la app/panel
+// escriben los comandos DIRECTO en `device_commands/{deviceId}` via el SDK
+// de Firebase (database_service.dart:crearComandoDispositivo), nunca a
+// traves del endpoint POST /commands de este archivo. `nextCommand`/
+// `ackCommand` antes solo leian de `memoryStore` — un Map en el proceso —
+// que jamas se entera de esas escrituras directas. En Cloud Functions 2a
+// gen, ademas, cada invocacion puede caer en una instancia efimera
+// distinta sin memoria compartida, asi que ni siquiera "andaba a veces".
+// Los 22 tests originales nunca lo detectaron porque crean el comando via
+// el mismo POST /commands (mismo proceso, misma memoria) antes de pedirlo.
+//
+// Fix: cuando hay DB real, `device_commands/{deviceId}` en Realtime
+// Database pasa a ser la unica fuente de verdad para leer/escribir el
+// estado del comando — memoryStore solo se usa cuando no hay DB (tests /
+// dev local sin Firebase, ver getDb()).
+//
+// Nota de forma: el valor guardado bajo `device_commands/{deviceId}/
+// {commandId}` NO trae un campo `commandId` (el id es la key de RTDB, ver
+// DeviceCommand.toMap() en el lado Dart) — se arma el objeto con el id
+// puesto aparte para no asumir que viene adentro del value.
+function pickPendingCommand(commandsById, now) {
+  if (!commandsById) return null;
+  const entries = Object.entries(commandsById)
+    .filter(
+      ([, value]) => value && value.status === "pending" && Number(value.expiresAt) > now,
+    )
+    .sort((a, b) => Number(a[1].createdAt || 0) - Number(b[1].createdAt || 0));
+  if (!entries.length) return null;
+  const [commandId, value] = entries[0];
+  return { commandId, ...value };
+}
+
 async function getDb() {
   const shouldUseFirebase =
     process.env.DEVICE_API_USE_FIREBASE === "true" ||
@@ -406,7 +439,40 @@ async function createCommand(deviceId, payload) {
   return command;
 }
 
+// Mismo criterio que pickPendingCommand (db real si existe, si no memoria) —
+// usado solo para informar al dispositivo cuantos comandos le esperan junto
+// con la respuesta de telemetria, no para decidir nada.
+async function countPendingCommands(deviceId) {
+  const db = await getDb();
+  if (db) {
+    const snapshot = await db.ref(`device_commands/${deviceId}`).get();
+    const commandsById = snapshot.exists() ? snapshot.val() : {};
+    const now = nowMs();
+    return Object.values(commandsById).filter(
+      (command) => command && command.status === "pending" && Number(command.expiresAt) > now,
+    ).length;
+  }
+  return getCommandQueue(deviceId).filter((command) => command.status === "pending").length;
+}
+
 async function nextCommand(deviceId) {
+  const db = await getDb();
+
+  if (db) {
+    const snapshot = await db.ref(`device_commands/${deviceId}`).get();
+    const command = pickPendingCommand(snapshot.exists() ? snapshot.val() : null, nowMs());
+    if (!command) return null;
+
+    const receivedAt = nowMs();
+    await db.ref(`device_commands/${deviceId}/${command.commandId}`).update({
+      status: "received",
+      receivedAt,
+    });
+    return { ...command, status: "received", receivedAt };
+  }
+
+  // Sin DB real (dev local / tests, ver getDb()): memoryStore sigue siendo
+  // la unica fuente, tal como antes de este fix.
   const queue = getCommandQueue(deviceId);
   const command = queue.find(
     (item) => item.status === "pending" && item.expiresAt > nowMs(),
@@ -415,27 +481,28 @@ async function nextCommand(deviceId) {
 
   command.status = "received";
   command.receivedAt = nowMs();
-
-  const db = await getDb();
-  if (db) {
-    await db.ref(`device_commands/${deviceId}/${command.commandId}`).update({
-      status: "received",
-      receivedAt: command.receivedAt,
-    });
-  }
-
   return command;
 }
 
 async function ackCommand(deviceId, commandId, ack) {
-  const queue = getCommandQueue(deviceId);
-  const command = queue.find((item) => item.commandId === commandId);
-  if (command) {
-    command.status = ack.status;
-    command.executedAt = ack.executedAt || nowSec();
-    command.result = ack.result || {};
-    command.errorCode = ack.errorCode || null;
-    command.message = ack.message || "";
+  const db = await getDb();
+  let command = null;
+
+  if (db) {
+    const snapshot = await db.ref(`device_commands/${deviceId}/${commandId}`).get();
+    if (snapshot.exists()) {
+      command = { commandId, ...snapshot.val() };
+    }
+  } else {
+    const queue = getCommandQueue(deviceId);
+    command = queue.find((item) => item.commandId === commandId) || null;
+    if (command) {
+      command.status = ack.status;
+      command.executedAt = ack.executedAt || nowSec();
+      command.result = ack.result || {};
+      command.errorCode = ack.errorCode || null;
+      command.message = ack.message || "";
+    }
   }
 
   const event = {
@@ -452,8 +519,17 @@ async function ackCommand(deviceId, commandId, ack) {
   };
   pushToMapList(memoryStore.events, deviceId, event);
 
+  // Update parcial (no overwrite): antes, si `command` no se encontraba en
+  // memoria, se escribia `ack` completo pisando el nodo entero y perdiendo
+  // `type`/`target`/`requestedBy`/etc. del comando original. Un update()
+  // dirigido solo a los campos del ACK nunca puede perder esos datos,
+  // vengan o no de un `command` que pudimos leer de vuelta.
   const updates = {
-    [`device_commands/${deviceId}/${commandId}`]: command || ack,
+    [`device_commands/${deviceId}/${commandId}/status`]: ack.status,
+    [`device_commands/${deviceId}/${commandId}/executedAt`]: ack.executedAt || nowSec(),
+    [`device_commands/${deviceId}/${commandId}/result`]: ack.result || {},
+    [`device_commands/${deviceId}/${commandId}/errorCode`]: ack.errorCode || null,
+    [`device_commands/${deviceId}/${commandId}/message`]: ack.message || "",
     [`device_events/${deviceId}/${Date.now()}`]: event,
   };
 
@@ -478,12 +554,13 @@ async function ackCommand(deviceId, commandId, ack) {
     }
   }
 
-  const db = await getDb();
   if (db) {
     await db.ref().update(updates);
   }
 
-  return command || { commandId, ...ack };
+  return command
+    ? { ...command, status: ack.status, executedAt: ack.executedAt || nowSec(), result: ack.result || {}, errorCode: ack.errorCode || null, message: ack.message || "" }
+    : { commandId, ...ack };
 }
 
 async function handleApiRequest(req, res) {
@@ -532,9 +609,7 @@ async function handleApiRequest(req, res) {
       sendJson(res, 200, {
         ok: true,
         serverTime: nowSec(),
-        pendingCommands: getCommandQueue(route.deviceId).filter(
-          (command) => command.status === "pending",
-        ).length,
+        pendingCommands: await countPendingCommands(route.deviceId),
       });
       return;
     }
@@ -638,6 +713,7 @@ module.exports = {
   signBody,
   DEFAULT_DEVICE_SECRET,
   buildHeartbeatMetadata,
+  pickPendingCommand,
 };
 
 // IMPORTANTE: esto tiene que ir DESPUES de `module.exports = {...}` de
@@ -658,6 +734,11 @@ if (onRequestV2 && admin) {
       // un cold start ocasional. Subir a 1 si el cold start se nota en una
       // demo en vivo — eso sí tiene costo fijo mensual.
       minInstances: 0,
+      // Sin esto, DEVICE_SIM_SECRET nunca llega como env var en 2a gen
+      // aunque este guardado en Secret Manager (`firebase functions:secrets:
+      // set`) — cada secreto usado en runtime tiene que declararse explicito
+      // aqui. Sin declarar, el codigo cae en el fallback "dev-secret".
+      secrets: ["DEVICE_SIM_SECRET"],
     },
     handleApiRequest,
   );

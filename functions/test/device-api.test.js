@@ -18,6 +18,7 @@ const {
   signBody,
   DEFAULT_DEVICE_SECRET,
   buildHeartbeatMetadata,
+  pickPendingCommand,
 } = require("../index.js");
 
 let server;
@@ -345,6 +346,68 @@ test("buildHeartbeatMetadata: nunca deja valores undefined, con o sin power/spee
     speedKmh: 10,
     vehicleVoltage: 12.4,
   });
+});
+
+// Bug real encontrado el 2026-08-19 (ver docs/plan-de-trabajo.md): la app y
+// el panel escriben los comandos DIRECTO en `device_commands/{deviceId}` via
+// el SDK de Firebase, nunca a traves de POST /commands de este archivo.
+// nextCommand/ackCommand antes solo leian de `memoryStore`, que jamas se
+// entera de esas escrituras — en produccion, un comando creado por la app
+// nunca le llegaba al dispositivo real. Estos tests cubren la funcion pura
+// que reemplaza esa lectura (`pickPendingCommand`) contra la MISMA forma de
+// datos que llega de Realtime Database (un objeto {commandId: value}, sin
+// `commandId` embebido en el value — ver DeviceCommand.toMap() en Dart),
+// sin necesitar un emulador de RTDB corriendo para probarlo.
+test("pickPendingCommand: sin comandos (null o vacio) devuelve null", () => {
+  assert.equal(pickPendingCommand(null, Date.now()), null);
+  assert.equal(pickPendingCommand({}, Date.now()), null);
+});
+
+test("pickPendingCommand: encuentra un comando pendiente escrito directo en RTDB (sin campo commandId en el value)", () => {
+  const now = Date.now();
+  const commandsById = {
+    cmdAbc: {
+      type: "setActuator",
+      target: "humo",
+      value: true,
+      status: "pending",
+      requestedBy: "uid-cliente",
+      requestedByRole: "client",
+      createdAt: now,
+      expiresAt: now + 60000,
+    },
+  };
+  const result = pickPendingCommand(commandsById, now);
+  assert.equal(result.commandId, "cmdAbc");
+  assert.equal(result.target, "humo");
+  assert.equal(result.status, "pending");
+});
+
+test("pickPendingCommand: ignora comandos ya no pendientes o expirados", () => {
+  const now = Date.now();
+  const commandsById = {
+    cmdViejo: {
+      status: "received",
+      expiresAt: now + 60000,
+      createdAt: now - 1000,
+    },
+    cmdExpirado: {
+      status: "pending",
+      expiresAt: now - 1000,
+      createdAt: now - 2000,
+    },
+  };
+  assert.equal(pickPendingCommand(commandsById, now), null);
+});
+
+test("pickPendingCommand: con varios pendientes, devuelve el mas antiguo (FIFO)", () => {
+  const now = Date.now();
+  const commandsById = {
+    cmdNuevo: { status: "pending", expiresAt: now + 60000, createdAt: now },
+    cmdViejo: { status: "pending", expiresAt: now + 60000, createdAt: now - 5000 },
+  };
+  const result = pickPendingCommand(commandsById, now);
+  assert.equal(result.commandId, "cmdViejo");
 });
 
 test("DEVICE_API_SKIP_SIGNATURE=true permite saltar la firma (solo pensado para desarrollo local)", async () => {
