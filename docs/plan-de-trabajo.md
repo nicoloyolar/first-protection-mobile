@@ -363,6 +363,33 @@ Si el vehículo está armado y el dispositivo deja de enviar telemetría por com
 
 Ya anotado como pendiente 🟡 en la sección 3. Hoy no hay proceso formal de quién puede crear un usuario admin ni con qué criterio (el primero se creó manualmente vía consola/CLI). **Pregunta:** ¿tiene el cliente una preferencia (solo él aprueba altas, un formulario, seguir haciéndolo manual por ahora dado el volumen bajo)?
 
+### 7. Cancelar un protocolo de emergencia ya activo — hoy sin ninguna fricción
+
+`protocoloActivo` (sirena/humo según reglas locales del firmware) es un solo booleano toggle, **con el mismo botón/comando en ambas direcciones** — no existe una acción separada para "activar" vs. "cancelar":
+
+- **App cliente** (`client_home_screen.dart:361`): un solo tap llama `vCtrl.cambiarEstadoProtocolo(!estado.protocoloActivo)` — **sin ningún diálogo de confirmación**. Un tap activa, otro tap idéntico lo cancela.
+- **Panel admin** (`admin_dashboard_web.dart:504-509`): mismo patrón, pero pasa por `_confirmCommand`, el diálogo **simple** (igual que "humo"), no el reforzado que sí tiene corte de corriente (patente + advertencia de velocidad).
+- No hay ninguna regla de rol: cualquier cliente dueño o cualquier admin puede tanto activarlo como cancelarlo, sin distinción de contexto.
+
+**Por qué es un problema real:** si alguien roba el vehículo con el teléfono del dueño adentro, o **obliga al dueño bajo coacción** a cancelar la alerta, hoy basta un tap sin fricción para apagar toda la respuesta de seguridad recién activada — justo lo opuesto de lo que se espera de un sistema antirrobo (activar fácil y rápido está bien; cancelar una emergencia ya confirmada debería ser difícil de hacer bajo presión o por error). `docs/physical-device-integration.md:88` ya anticipaba esto como pregunta abierta ("cancelar protocolo, **si el negocio lo permite**"), pero nunca se resolvió en código — hoy "lo permite" por default, sin que nadie lo haya decidido a propósito.
+
+**Preguntas para el cliente:**
+1. ¿Quién debería poder cancelar un protocolo ya activo — solo un admin desde el panel (nunca el dueño desde su celular, justo por el escenario de coacción), o el dueño también pero con más fricción?
+2. ¿Cancelar debería tener el mismo nivel de confirmación reforzada que corte de corriente, o incluso más (revertir una alerta real de robo es más grave que activarla)?
+3. ¿Tiene sentido un pequeño período de espera obligatorio antes de permitir cancelar (para que no sea instantáneo bajo presión), o eso generaría más problemas que soluciones en un caso legítimo de falsa alarma?
+
+### 8. `estadoSuscripcion` no restringe nada hoy
+
+Existe el campo `estadoSuscripcion` (ACTIVO/otro) en el inventario del panel admin (`device_inventory_screen.dart`), pero es puramente informativo — no hay ningún punto en `functions/index.js` ni en los controladores que lo lea para bloquear algo. Un dispositivo marcado como suspendido/vencido sigue recibiendo telemetría y ejecutando comandos exactamente igual que uno activo. **Pregunta:** ¿debería la suscripción realmente restringir el servicio (bloquear comandos, dejar de procesar al dispositivo) cuando no está activa, o por ahora es solo un dato administrativo sin efecto?
+
+### 9. ¿Existe (o debería existir) una central de monitoreo humana?
+
+`apuntes.txt` menciona notificaciones por "SMS, correo, **llamada a central**" — sugiere que en algún momento se pensó en algo más que solo avisarle al dueño desde su celular. **Pregunta:** ¿la responsabilidad de reaccionar a una alerta de seguridad recae solo en el dueño/admin vía notificación push, o el cliente tiene (o planea tener) una central de monitoreo 24/7 que también debería recibir estas alertas? Esto cambia el diseño de "a quién se notifica cada evento" (ver punto 0).
+
+### 10. Retención y privacidad de datos personales
+
+El sistema ya guarda RUT, domicilio y contacto de emergencia reales de clientes en producción (no solo en pruebas, ver regla de privacidad de la sección 7). No hay ninguna política definida de cuánto tiempo se retiene el historial de ubicación/eventos ni quién puede acceder a él. **Pregunta:** ¿el cliente tiene o necesita una política de retención/borrado de datos? Vale la pena tenerlo presente por la ley de protección de datos personales en Chile, sobre todo por el domicilio y patrón de movimiento de los usuarios.
+
 ### Respuestas del cliente (completar después de la llamada)
 
 *(pendiente)*
