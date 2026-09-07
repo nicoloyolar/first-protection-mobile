@@ -2,7 +2,9 @@
 
 Documento vivo para ordenar el trabajo pendiente en todos los frentes (app móvil, panel web, backend/seguridad y hardware). Base para la conversación con el cliente. Se actualiza a medida que se sume documentación adicional o cambien prioridades.
 
-Última actualización: 2026-08-19 (Pista C ítem 2 resuelto: cuenta de facturación Blaze vinculada, `deviceApi` desplegado de verdad en producción, primer usuario admin sembrado — y, al probarlo por primera vez de punta a punta, se encontró y corrigió un bug crítico: los comandos reales creados por la app nunca le llegaban al dispositivo. Ver detalle abajo. Pista A y B completas salvo lo pausado; sigue pendiente la decisión de política de corte de corriente).
+Última actualización: 2026-09-07 (preparación para llamada de conversación con el cliente, sin demo: se verificó que los cambios de `functions/index.js` del 19-ago sí estaban commiteados — la nota de "pendiente" había quedado desactualizada; se registró la decisión de dejar de depender de material externo (PDF de mayo, función huérfana `enviarAlerta`) y trabajar solo desde este repo; se dejó redactada una propuesta detallada de política de corte de corriente, ver sección 9, pendiente de confirmar con el cliente en la llamada).
+
+Actualización anterior: 2026-08-19 (Pista C ítem 2 resuelto: cuenta de facturación Blaze vinculada, `deviceApi` desplegado de verdad en producción, primer usuario admin sembrado — y, al probarlo por primera vez de punta a punta, se encontró y corrigió un bug crítico: los comandos reales creados por la app nunca le llegaban al dispositivo. Ver detalle abajo. Pista A y B completas salvo lo pausado; sigue pendiente la decisión de política de corte de corriente).
 
 ### Actualización 2026-08-19 — Deploy Real De Cloud Functions
 
@@ -24,7 +26,7 @@ El hallazgo más importante del día, encontrado al hacer el primer smoke test e
 - **Fix aplicado**: `nextCommand`/`ackCommand`/el contador `pendingCommands` ahora leen y escriben contra Realtime Database directamente cuando hay DB real disponible (nueva función pura `pickPendingCommand`, exportada y testeada), usando `memoryStore` solo como fallback para desarrollo local/tests sin Firebase (comportamiento sin cambios ahí — los 22 tests originales siguen pasando tal cual). El ACK ahora hace un `update()` dirigido solo a los campos del ACK, nunca un overwrite completo, así que no puede volver a perder los campos originales del comando.
 - **4 tests nuevos** para `pickPendingCommand` (sin comandos, comando encontrado con la forma real de datos sin campo `commandId` embebido, comandos expirados/no-pendientes ignorados, orden FIFO con varios pendientes) — total 26 tests, todos verdes.
 - **Verificado contra producción real**: se repitió el mismo escenario que expuso el bug (comando escrito directo en `device_commands/` simulando la app, sin campo `commandId` en el value — igual que `DeviceCommand.toMap()` en Dart) contra la función ya redeployada — el simulador esta vez sí recibió el comando, lo ejecutó, y `dispositivos/{id}/humo` se actualizó a `true` solo después del ACK. Datos de prueba limpiados después.
-- Cambio también sin commitear todavía (junto con el fix de `secrets:[...]`).
+- **Corrección 2026-09-07**: este cambio (y el de `secrets:[...]`) sí quedaron commiteados — se verificó `git log -- functions/index.js` y aparecen en `c87ab24` ("sube mejoras desde mac", 19-ago). La nota de "sin commitear todavía" que seguía en la sección 8 estaba desactualizada; ya se corrigió ahí también.
 
 ## Cómo Leer Este Documento
 
@@ -67,6 +69,10 @@ Los 6 documentos aportados (fechados **27-may-2026**) describen un estado del pr
 **Recomendación para la reunión con el cliente:**
 - No presentar "flujo de comandos cerrado" ni "reglas Firebase versionadas" como completado — decir que está en curso (ya está en este plan).
 - Preguntar si existen los 4 documentos referenciados (`development-guide`, `internal-user-manual`, `project-decisions-and-risks`, `delivery-log`) en algún otro lugar — tienen contenido valioso (guía de entornos, plan de pruebas) que conviene recuperar en vez de rehacer.
+
+### Decisión 2026-09-07 — Dejar De Depender De Material Externo
+
+El usuario decidió explícitamente no seguir dependiendo de estos documentos externos perdidos (los PDF de mayo, los 4 archivos `docs/*` que referencian y nunca existieron en el repo) ni de la función huérfana `enviarAlerta` (borrada el 19-ago, nunca versionada acá). El repo es la única fuente de verdad de ahora en adelante — se deja de preguntar por ese material o de tratar de recuperarlo; lo que no está en este repo, se construye de nuevo aquí si hace falta. Las filas de la tabla de arriba y los puntos de la sección 9 que piden "confirmar/recuperar" ese material quedan como registro histórico, no como tarea pendiente activa.
 
 ### Actualización 2026-08-12 — Contradicción Del SIM7600 Resuelta
 
@@ -123,7 +129,7 @@ Se tomó una decisión explícita en dos etapas en vez de forzar una sola respue
 | 🟢 **Resuelto (2026-08-19)** | `DEVICE_API_SKIP_SIGNATURE` existe como variable para saltar la firma HMAC — riesgo si queda activa fuera de desarrollo. | `Guía de desarrollo y entornos` (PDF), sección "Variables y secretos". | Confirmado en el deploy real del 2026-08-19: no se configuró (ni se configuró ninguna otra variable) más allá del secreto `DEVICE_SIM_SECRET`, así que en producción `process.env.DEVICE_API_SKIP_SIGNATURE` es `undefined` y la firma HMAC queda obligatoria. No hay un chequeo automático que lo bloquee si alguien la agrega después — sigue siendo una responsabilidad manual. |
 | 🟠 | Falta probar los endpoints con el hardware real (SIM7600) y validar el payload armado desde STM32 + NEO-M8N. | *Contrato API dispositivo* (PDF), sección "Pendientes de cierre". | Depende de que exista hardware — mientras tanto se puede seguir validando contra el simulador. |
 | 🟡 | Sin proceso formal para crear usuarios admin y asignar roles. | `README.md` pendientes. | |
-| 🟡 | Falta definir la política operacional exacta de cuándo se puede activar corta corriente/humo/sirena (¿solo confirmación humana? ¿reglas automáticas?). | `docs/physical-device-integration.md` y *Contrato API dispositivo* (PDF) coinciden en dejarlo abierto. | Es una decisión de negocio/legal, no solo técnica — conviene resolverla con el cliente. |
+| 🟡 | Falta definir la política operacional exacta de cuándo se puede activar corta corriente/humo/sirena (¿solo confirmación humana? ¿reglas automáticas?). | `docs/physical-device-integration.md` y *Contrato API dispositivo* (PDF) coinciden en dejarlo abierto. | Es una decisión de negocio/legal, no solo técnica — conviene resolverla con el cliente. **Ver propuesta detallada en la sección "Propuesta — Política De Corte De Corriente" más abajo**, pendiente de confirmar con el cliente en llamada del 2026-09-07. |
 | 🟡 | Los 22 tests automatizados de la API prueban `handleApiRequest` directo, nunca el wrapper real de Cloud Functions (`exports.deviceApi`). | `functions/test/device-api.test.js`. | Por eso los 2 bugs de arriba no los detectaban. Sería valioso un test de humo contra `firebase emulators:start --only functions` (lo que se hizo manualmente hoy) automatizado en CI, no solo manual. |
 
 ### ⚠️ Incidente Menor (2026-08-12): Escritura Accidental En Producción Durante Pruebas
@@ -251,15 +257,62 @@ Pendiente: este plan de pruebas no está formalizado en el repo (`test/` solo ti
 
 - ~~**Acción inmediata pendiente**: vincular cuenta de facturación (plan Blaze)~~ — resuelto 2026-08-19, ver "Actualización 2026-08-19 — Deploy Real De Cloud Functions" arriba.
 - ~~**Acción inmediata pendiente**: sembrar el primer usuario con `role: admin`~~ — resuelto 2026-08-19. Se confirmó primero que las reglas ya estaban desplegadas en producción (lectura sin auth vía REST directo a la RTDB devuelve `401 Permission denied`). Se creó la cuenta `admin@first-protection.cl` en Firebase Auth (vía Identity Toolkit REST, password generado y entregado solo en el chat, no queda en ningún archivo) y se sembró `usuarios/{uid}` con `role: admin` vía `firebase database:set` (la CLI tiene acceso administrativo y por eso puede escribir ese nodo aunque las reglas normales no lo permitirían todavía a nadie). Verificado leyendo el nodo de vuelta. Pendiente: cambiar el password desde el panel al primer login y guardar credenciales en el gestor de contraseñas del equipo.
-- Commitear los cambios de código pendientes en `functions/index.js` — se hicieron en el filesystem y ya se re-deployaron a producción, pero no se ha hecho `git commit` todavía: (1) declaración de `secrets: ["DEVICE_SIM_SECRET"]` en `deviceApi`, (2) fix del bug crítico de comandos (`pickPendingCommand`, `nextCommand`/`ackCommand`/`countPendingCommands` leyendo de RTDB real en vez de solo memoria) + 4 tests nuevos en `functions/test/device-api.test.js`, ver "⚠️ Bug Crítico Encontrado Y Corregido (2026-08-19)" arriba.
+- ~~Commitear los cambios de código pendientes en `functions/index.js`~~ — ya estaba resuelto, solo esta nota había quedado desactualizada. Verificado 2026-09-07 (`git status` limpio, `git log -- functions/index.js` confirma ambos cambios en el commit `c87ab24` del 19-ago): (1) declaración de `secrets: ["DEVICE_SIM_SECRET"]` en `deviceApi`, (2) fix del bug crítico de comandos (`pickPendingCommand`, `nextCommand`/`ackCommand`/`countPendingCommands` leyendo de RTDB real en vez de solo memoria) + 4 tests nuevos en `functions/test/device-api.test.js`, ver "⚠️ Bug Crítico Encontrado Y Corregido (2026-08-19)" arriba.
 - Decisiones del usuario aún abiertas: política de corte de corriente automático (Pista C), proveedor de notificaciones (Pista A, pausado), restringir API keys de Maps (Pista C, pausado).
 - Ver sección "⚠️ Incidente Menor" arriba antes de volver a levantar el emulador de Functions — siempre junto con `database`, nunca solo.
 
-## 9. Pendiente De Este Documento
+## 9. Propuesta — Política De Corte De Corriente (Preparada Para Llamada Con Cliente 2026-09-07)
+
+Preparado antes de una llamada de conversación con el cliente (sin demo) para discutir la política de negocio de cuándo se permite cortar corriente remotamente. **Es una recomendación, no una decisión tomada** — queda pendiente de que el cliente la confirme o la ajuste en la llamada, y de una revisión legal si el cliente lo estima necesario. Responder acá lo que haya quedado acordado.
+
+### Regla propuesta
+
+Nunca cortar corriente con el vehículo en movimiento — como **bloqueo técnico server-side**, no solo una advertencia de UI que se puede ignorar (que es lo único que existe hoy, ver `admin_dashboard_web.dart` diálogo reforzado de corte de corriente).
+
+1. **Bloqueo duro en `validateCommandPayload` (`functions/index.js`)**: rechazar el comando de corte de corriente si el vehículo no está "confirmado detenido" (ver definición abajo). Mismo umbral (5 km/h) que ya usa `vehiculo_controller.dart` para no permitir "armar" en movimiento — consistente con una decisión que el propio sistema ya tomó en otro lado.
+2. **"Cortar en el próximo stop"** en vez de solo rechazar: si no está confirmado detenido, el comando queda en la cola existente (`device_commands/`) y se ejecuta automáticamente en cuanto la telemetría confirme el estado detenido, en vez de obligar al admin a reintentar a mano.
+3. **Corte de corriente nunca 100% automático**, ni siquiera si en el futuro se automatiza la detección de robo (`carjackingSuspected`/`theftConfirmed`, ver `physical-device-integration.md`) — el sistema puede armar la sospecha y notificar, pero la ejecución del corte siempre la confirma una persona.
+
+### Definición de "confirmado detenido" — el punto que hay que resolver primero
+
+El problema de fondo: `speedKmh` es un campo **opcional**, y hoy si no llega se trata como `0` (`functions/index.js:294`, `compatibilityDeviceState`) — es decir, "sin dato" se confunde con "detenido". Para una acción irreversible y peligrosa eso está al revés: **ante cualquier incertidumbre hay que asumir que el vehículo podría estar en movimiento, nunca lo contrario.**
+
+"Confirmado detenido" debería exigir las **tres condiciones juntas**, no solo `velocidad == 0`:
+
+| Condición | Por qué |
+|---|---|
+| `gpsFix: true` en la última lectura | El simulador ya lo manda (`stm_simulator.py`), pero hoy no se guarda/valida en el backend. Sin fix, el GPS no tiene forma de saber si hay movimiento. |
+| `speedKmh` reportado explícitamente (no ausente) y `== 0` (o bajo un umbral chico por ruido normal) | Evita que "no llegó el dato" se lea como "está detenido". |
+| Esa lectura es **reciente** (comparada contra `lastSeenAt`, que ya existe y se usa en la pestaña "Diagnóstico") | Evita usar una velocidad vieja de antes de perder señal (túnel, subterráneo) como si fuera el estado actual. |
+
+Si cualquiera de las tres falla → estado "no se puede confirmar que esté detenido" → el comando queda en cola (punto 2 arriba), nunca se ejecuta a ciegas.
+
+**Casos concretos:**
+
+| Situación | Comportamiento hoy | Comportamiento propuesto |
+|---|---|---|
+| GPS sin fix (túnel, subterráneo) | Se guarda como `velocidad: 0`, parece detenido | Tratado como "desconocido", no se ejecuta el corte |
+| Última lectura vieja (perdió señal hace rato) | Se sigue mostrando esa velocidad como si fuera actual | Dato viejo = desconocido, no se ejecuta |
+| Dispositivo offline (sin telemetría) | Panel no muestra advertencia si no hay dato | Mismo criterio: sin señal reciente = no se ejecuta |
+| Realmente detenido, `gpsFix: true`, lectura fresca en 0 | Se permite (con advertencia ignorable) | Único caso donde se permite ejecutar |
+
+### UI: reemplazar la advertencia ignorable
+
+El diálogo reforzado del panel admin (`admin_dashboard_web.dart`, líneas ~1191-1253) hoy solo advierte si `velocidad > 0`, pero el botón queda habilitado igual. Propuesta: si no está "confirmado detenido", el botón se deshabilita o exige un override explícito y auditado ("no puedo confirmar que esté detenido, igual quiero intentarlo") en vez de un check silencioso.
+
+### Nota para hardware (no bloqueante para esta decisión)
+
+El GPS solo nunca va a ser 100% confiable para esto. Si el STM32 termina teniendo lectura de voltaje/ignición (ya listada como pendiente 🟡 en la Pista D), esa señal serviría de respaldo para corroborar "motor apagado" sin depender solo del GPS — vale la pena que el equipo de hardware lo tenga en mente al definir el pinout, sin que esto bloquee el MVP.
+
+### Respuesta del cliente (completar después de la llamada)
+
+*(pendiente — anotar acá lo que se acuerde: ¿se confirma esta regla tal cual, se ajusta el umbral/tiempos, se pide revisión legal, se descarta el "cortar en el próximo stop", etc.?)*
+
+## 10. Pendiente De Este Documento
 
 - ~~Resolver la contradicción sobre el SIM7600 con el equipo de hardware~~ — resuelto 2026-08-12.
 - Confirmar bandas exactas del módem A7670 elegido contra el operador del piloto.
-- Confirmar si existen en algún lado los 4 documentos referenciados por los PDF (`development-guide`, `internal-user-manual`, `project-decisions-and-risks`, `delivery-log`) y si hay código asociado al "flujo de comandos cerrado" que no llegó a este repo.
+- ~~Confirmar si existen en algún lado los 4 documentos referenciados por los PDF...~~ — descartado 2026-09-07, ver "Decisión — Dejar De Depender De Material Externo" arriba: se trabaja solo con este repo de ahora en adelante.
 - Falta incorporar más documentación adicional si el cliente/equipo aporta más.
 - Falta estimar tiempos/esfuerzo por tarea una vez se prioricen con el cliente.
 - Falta definir dueño responsable por tarea/pista.
