@@ -316,13 +316,32 @@ Mismo criterio que la sección 9: son recomendaciones para discutir en la llamad
 
 El usuario planteó que, al ser una aplicación de urgencia/emergencia, **las notificaciones deben estar presentes en todo momento y evento** — una alerta que solo queda registrada en un log y nadie ve en el momento es una falla del propósito central del producto, sin importar qué tan bien esté construido el resto. Esto reordena la prioridad: notificaciones deja de ser un ítem pausado y pasa a ser la pieza de la que dependen casi todas las preguntas de abajo (1 y 5 en particular no tienen sentido sin esto resuelto primero).
 
-**Matiz a confirmar con el cliente en la llamada** (recomendación de Claude): distinguir **evento de seguridad** (comando ejecutado, alerta de geocerca, alejamiento sospechoso, corte de corriente activado, dispositivo en silencio estando armado, etc. → notificación push activa e inmediata, sin excepción) de **telemetría rutinaria** (heartbeat normal, posición sin alerta → se queda solo visible en la UI, no como push). Notificar también lo rutinario arriesga que el usuario silencie o desinstale las notificaciones por exceso de ruido, y el día de una alerta real ya las tiene apagadas — lo contrario de lo que se busca. Preguntarle al cliente si coincide con esta distinción o si de verdad quiere notificación push también para telemetría rutinaria.
+**Decidido por el usuario (2026-09-07):** se notifica **exclusivamente lo de seguridad, pero absolutamente todo dentro de esa categoría** — cero telemetría rutinaria (heartbeat normal, posición sin alerta se queda solo visible en la UI, no como push), y cero eventos de seguridad silenciosos, sin excepción. Ya no es una pregunta abierta, es principio de diseño a implementar.
+
+**Checklist de "todo lo de seguridad"** — armado cruzando lo ya implementado en código con el catálogo de eventos esperados de `docs/physical-device-integration.md`, para que la implementación de notificaciones no se quede corta silenciosamente:
+
+Ya implementados hoy (falta conectarles notificación activa):
+1. Comando peligroso ejecutado/fallido/expirado (corte de corriente, humo, sirena).
+2. `vehicleMovedWhileArmed` — vehículo se movió estando armado.
+3. `posibleAlejamientoVehiculo` — alejamiento sospechoso usuario-vehículo.
+4. Salida de geocerca.
+
+Documentados como esperados del dispositivo físico, aún sin implementar (catálogo de `physical-device-integration.md`, sección "Modos Del Sistema" y "Boton Fisico Bajo El Volante" — se resuelven junto con el hardware, pero quedan anotados acá porque la regla de notificación ya aplica desde ya):
+5. `panicButtonPressed` (botón físico, pulsación corta).
+6. Protocolo activado (pulsación larga del botón físico).
+7. Cancelación de protocolo (doble pulsación).
+8. Manipulación/tamper del dispositivo.
+9. Batería de respaldo baja.
+10. Pérdida de GPS.
+11. Ignición inesperada estando armado.
+12. Dispositivo sin heartbeat reciente estando armado — resuelve la pregunta 5 de abajo; el propio doc ya sugiere el parámetro `heartbeatTimeoutSeconds` (60-180s).
+13. Cambio de `systemMode` hacia estados de riesgo (`suspiciousMovement`, `carjackingSuspected`, `theftConfirmed`).
 
 ### 1. Alertas que hoy quedan registradas pero no notifican a nadie
 
-- **Alejamiento sospechoso** (usuario lejos del vehículo + vehículo en movimiento, `vehiculo_controller.dart`): hoy solo escribe el evento `posibleAlejamientoVehiculo`, no notifica ni cambia `systemMode`. Con el principio del punto 0, esto pasa a requerir notificación activa.
-- **Salida de geocerca**: mismo caso, hoy solo `registrarAlertaGeocerca` pasivo.
-- **Pregunta:** además de notificar, ¿alguno de estos dos debería escalar el `systemMode` automáticamente (ver punto 2), o se mantiene solo como alerta informativa?
+- **Alejamiento sospechoso** (usuario lejos del vehículo + vehículo en movimiento, `vehiculo_controller.dart`): hoy solo escribe el evento `posibleAlejamientoVehiculo`, no notifica ni cambia `systemMode`. **Ya resuelto por el punto 0**: pasa a requerir notificación activa, sin excepción (es el ítem 3 del checklist).
+- **Salida de geocerca**: mismo caso, hoy solo `registrarAlertaGeocerca` pasivo. **Ya resuelto por el punto 0** (ítem 4 del checklist).
+- **Pregunta que sigue abierta:** además de notificar (ya decidido), ¿alguno de estos dos debería escalar el `systemMode` automáticamente (ver punto 2), o se mantiene solo como alerta informativa?
 
 ### 2. Estados del sistema — hoy solo 2 de 8
 
@@ -338,7 +357,7 @@ El plan de pruebas (sección 7) dice que el cliente puede "solicitar comandos pe
 
 ### 5. Dispositivo que deja de reportar mientras está armado (silencio ≠ "sin señal de red")
 
-Si el vehículo está armado y el dispositivo deja de enviar telemetría por completo, hoy no hay ninguna regla que distinga "perdió cobertura normal" de "alguien lo desconectó/saboteó a propósito". **Pregunta:** ¿debería un silencio prolongado estando armado generar automáticamente una alerta de "posible manipulación" (y, por el punto 0, notificar activamente)?
+Si el vehículo está armado y el dispositivo deja de enviar telemetría por completo, hoy no hay ninguna regla que distinga "perdió cobertura normal" de "alguien lo desconectó/saboteó a propósito". **Ya resuelto por el punto 0** (ítem 12 del checklist): sí, debe generar alerta y notificar activamente. **Pregunta que sigue abierta:** el valor exacto de `heartbeatTimeoutSeconds` — el doc sugiere 60-180s, falta que el cliente confirme o ajuste ese rango según qué tan tolerante quiere ser a falsos positivos por cobertura débil.
 
 ### 6. Proceso de alta de administradores
 
