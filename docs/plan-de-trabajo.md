@@ -308,7 +308,47 @@ El GPS solo nunca va a ser 100% confiable para esto. Si el STM32 termina teniend
 
 *(pendiente — anotar acá lo que se acuerde: ¿se confirma esta regla tal cual, se ajusta el umbral/tiempos, se pide revisión legal, se descarta el "cortar en el próximo stop", etc.?)*
 
-## 10. Pendiente De Este Documento
+## 10. Otras Preguntas De Lógica De Negocio Preparadas Para La Llamada (2026-09-07)
+
+Mismo criterio que la sección 9: son recomendaciones para discutir en la llamada de conversación con el cliente (sin demo), no decisiones tomadas. El hardware queda explícitamente fuera de esta ronda — se retoma en otra sesión. Responder acá lo que quede acordado.
+
+### 0. Principio general acordado con el usuario: notificaciones activas en todo evento de seguridad
+
+El usuario planteó que, al ser una aplicación de urgencia/emergencia, **las notificaciones deben estar presentes en todo momento y evento** — una alerta que solo queda registrada en un log y nadie ve en el momento es una falla del propósito central del producto, sin importar qué tan bien esté construido el resto. Esto reordena la prioridad: notificaciones deja de ser un ítem pausado y pasa a ser la pieza de la que dependen casi todas las preguntas de abajo (1 y 5 en particular no tienen sentido sin esto resuelto primero).
+
+**Matiz a confirmar con el cliente en la llamada** (recomendación de Claude): distinguir **evento de seguridad** (comando ejecutado, alerta de geocerca, alejamiento sospechoso, corte de corriente activado, dispositivo en silencio estando armado, etc. → notificación push activa e inmediata, sin excepción) de **telemetría rutinaria** (heartbeat normal, posición sin alerta → se queda solo visible en la UI, no como push). Notificar también lo rutinario arriesga que el usuario silencie o desinstale las notificaciones por exceso de ruido, y el día de una alerta real ya las tiene apagadas — lo contrario de lo que se busca. Preguntarle al cliente si coincide con esta distinción o si de verdad quiere notificación push también para telemetría rutinaria.
+
+### 1. Alertas que hoy quedan registradas pero no notifican a nadie
+
+- **Alejamiento sospechoso** (usuario lejos del vehículo + vehículo en movimiento, `vehiculo_controller.dart`): hoy solo escribe el evento `posibleAlejamientoVehiculo`, no notifica ni cambia `systemMode`. Con el principio del punto 0, esto pasa a requerir notificación activa.
+- **Salida de geocerca**: mismo caso, hoy solo `registrarAlertaGeocerca` pasivo.
+- **Pregunta:** además de notificar, ¿alguno de estos dos debería escalar el `systemMode` automáticamente (ver punto 2), o se mantiene solo como alerta informativa?
+
+### 2. Estados del sistema — hoy solo 2 de 8
+
+El modo armado hoy solo implementa `normal`/`armed`. `docs/physical-device-integration.md` sugiere 6 estados más: `proximityWatch`, `suspiciousMovement`, `carjackingSuspected`, `theftConfirmed`, `service`, `offline`. **Pregunta:** ¿priorizar la implementación de alguno ahora (probablemente `carjackingSuspected`/`theftConfirmed` son los de mayor valor percibido por el cliente), o mantenerlo simple por ahora?
+
+### 3. Nivel de fricción por comando peligroso
+
+Ya se reforzó la confirmación solo para **corte de corriente** (doble confirmación, patente + advertencia de velocidad). **Pregunta:** ¿humo y sirena/protocolo deberían tener el mismo nivel de confirmación reforzada, o son de menor riesgo y basta la confirmación simple actual?
+
+### 4. Qué puede pedir un cliente vs. solo un admin
+
+El plan de pruebas (sección 7) dice que el cliente puede "solicitar comandos permitidos", pero esa distinción no está escrita como regla explícita en ningún lado, solo implícita en la UI actual. **Pregunta:** ¿cuáles comandos exactamente debería poder accionar un cliente desde su celular sin pasar por un admin? (ej. ¿sirena sí, corte de corriente no?).
+
+### 5. Dispositivo que deja de reportar mientras está armado (silencio ≠ "sin señal de red")
+
+Si el vehículo está armado y el dispositivo deja de enviar telemetría por completo, hoy no hay ninguna regla que distinga "perdió cobertura normal" de "alguien lo desconectó/saboteó a propósito". **Pregunta:** ¿debería un silencio prolongado estando armado generar automáticamente una alerta de "posible manipulación" (y, por el punto 0, notificar activamente)?
+
+### 6. Proceso de alta de administradores
+
+Ya anotado como pendiente 🟡 en la sección 3. Hoy no hay proceso formal de quién puede crear un usuario admin ni con qué criterio (el primero se creó manualmente vía consola/CLI). **Pregunta:** ¿tiene el cliente una preferencia (solo él aprueba altas, un formulario, seguir haciéndolo manual por ahora dado el volumen bajo)?
+
+### Respuestas del cliente (completar después de la llamada)
+
+*(pendiente)*
+
+## 11. Pendiente De Este Documento
 
 - ~~Resolver la contradicción sobre el SIM7600 con el equipo de hardware~~ — resuelto 2026-08-12.
 - Confirmar bandas exactas del módem A7670 elegido contra el operador del piloto.
