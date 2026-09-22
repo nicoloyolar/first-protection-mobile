@@ -871,6 +871,14 @@ class _DeviceInventoryScreenState extends State<DeviceInventoryScreen> {
       padding: const EdgeInsets.only(bottom: 15),
       child: DropdownButtonFormField<String>(
         isExpanded: true,
+        // No migrar a `initialValue` (el reemplazo sugerido por el lint):
+        // este dropdown se usa para el cascade Marca -> Modelo (limpia
+        // `_modeloController` cuando cambia la Marca, ver mas abajo).
+        // `initialValue` solo fija el valor en el primer build; al cambiar
+        // de Marca el Modelo quedaria visualmente pegado en la seleccion
+        // anterior en vez de limpiarse. `value` sigue sincronizando en cada
+        // rebuild, que es el comportamiento que este formulario necesita.
+        // ignore: deprecated_member_use
         value: (safeValue == null || safeValue.isEmpty) ? null : safeValue,
         dropdownColor: const Color(0xFF1a1a1a),
         onChanged: items.isEmpty ? null : onChanged,

@@ -9,7 +9,8 @@
   "scripts": {
     "serve:device-api": "node index.js",
     "test:smoke": "node index.js --smoke-test",
-    "test": "node --test"
+    "test": "node --test test/*.test.js",
+    "test:emulator-smoke": "node test/emulator-smoke.js"
   },
   "dependencies": {
     "firebase-admin": "^12.7.0",
