@@ -38,6 +38,11 @@ functions/.runtimeconfig.json
 functions/lib/
 functions/package-lock.json
 
+# Override local de secretos para el Functions Emulator (nombre hardcodeado
+# por firebase-tools). El CI lo genera solo (ver .github/workflows/ci.yml,
+# job functions-emulator-smoke); nunca deberia comitearse.
+functions/.secret.local
+
 # Symbolication related
 app.*.symbols
 

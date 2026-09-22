@@ -46,11 +46,18 @@ jobs:
       - run: npm install
         working-directory: functions
       - run: npm install -g firebase-tools
+      # ".secret.local" es el nombre de archivo que firebase-tools busca de
+      # forma hardcodeada para overrides locales de secretos (ver
+      # functionsEmulatorShared.js en el paquete) — no puede renombrarse. Se
+      # genera aca, en runtime, en vez de comitearlo al repo: no es el
+      # secreto de produccion (ese vive en Secret Manager real), es el mismo
+      # valor "dev-secret" ya hardcodeado como fallback en
+      # functions/index.js y usado por toda la suite de tests local. Sin
+      # esto, el emulador intenta pedirle el secreto real a Secret Manager,
+      # no tiene credenciales, y la funcion cuelga hasta hacer timeout.
+      - run: echo "DEVICE_SIM_SECRET=dev-secret" > functions/.secret.local
       # --project con prefijo "demo-" corre el emulador 100% offline, sin
       # necesitar credenciales reales de GCP ni tocar el proyecto real.
-      # functions/.secret.local provee el override de DEVICE_SIM_SECRET
-      # (mismo valor "dev-secret" que ya usa toda la suite local) para que
-      # el emulador no intente pedirle el secreto real a Secret Manager.
       - run: firebase emulators:exec --project demo-first-protection --only functions,database "node functions/test/emulator-smoke.js"
 
   flutter-checks:
