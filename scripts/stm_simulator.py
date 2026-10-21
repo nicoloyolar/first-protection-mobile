@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import hmac
+import http.client
 import json
 import math
 import random
@@ -234,7 +235,9 @@ class ApiClient:
             with urllib.request.urlopen(request, timeout=10) as response:
                 raw = response.read().decode("utf-8")
                 return json.loads(raw) if raw else {}
-        except urllib.error.URLError as exc:
+        # OSError cubre URLError/HTTPError y tambien timeouts o conexiones
+        # cortadas durante la lectura, que no vienen envueltos en URLError.
+        except (OSError, http.client.HTTPException, ValueError) as exc:
             print(f"[warn] request failed: {exc}", file=sys.stderr)
             return None
 

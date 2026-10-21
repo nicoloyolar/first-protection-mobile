@@ -272,12 +272,23 @@ function commandRateLimited(deviceId) {
   return timestamps.length > COMMAND_RATE_LIMIT_MAX;
 }
 
+/// `protocoloActivo` reportado por la telemetria, o undefined si no viene.
+/// Sin dato no se escribe nada: asi se conserva el valor que dejo el ACK del
+/// comando `protocoloActivo` (antes se derivaba siempre de panicButton y la
+/// siguiente telemetria lo volvia a apagar).
+function reportedProtocoloActivo(actuators, signals) {
+  if (typeof actuators.protocoloActivo === "boolean") return actuators.protocoloActivo;
+  if (signals.panicButton === true) return true;
+  return undefined;
+}
+
 function compatibilityDeviceState(deviceId, telemetry) {
   const location = telemetry.location || {};
   const power = telemetry.power || {};
   const signals = telemetry.signals || {};
   const actuators = telemetry.actuators || {};
   const network = telemetry.network || {};
+  const protocoloActivo = reportedProtocoloActivo(actuators, signals);
 
   return {
     id: deviceId,
@@ -296,9 +307,29 @@ function compatibilityDeviceState(deviceId, telemetry) {
     humo: actuators.humo === true,
     sirenaActiva: actuators.sirena === true,
     cortaCorriente: actuators.cortaCorriente === true,
-    protocoloActivo: signals.panicButton === true,
+    ...(protocoloActivo === undefined ? {} : { protocoloActivo }),
     ultimaActualizacion: telemetry.timestamp || nowSec(),
   };
+}
+
+/// Multi-path update de una telemetria. Cada campo de `dispositivos/{id}` va
+/// como ruta propia: una clave `dispositivos/{id}` reemplazaria el nodo
+/// entero y borraria lo que escriben la app y el panel (idPropietario, alias,
+/// patente, systemMode, geofence, datos del propietario).
+function buildTelemetryUpdates(deviceId, telemetry, state, eventKey) {
+  const updates = {};
+  for (const [field, value] of Object.entries(state)) {
+    updates[`dispositivos/${deviceId}/${field}`] = value;
+  }
+  updates[`device_telemetry/${deviceId}/${String(telemetry.sequence)}`] = telemetry;
+  updates[`device_events/${deviceId}/${eventKey}`] = {
+    type: "heartbeat",
+    severity: "info",
+    timestamp: telemetry.timestamp || nowSec(),
+    location: telemetry.location || null,
+    metadata: buildHeartbeatMetadata(telemetry),
+  };
+  return updates;
 }
 
 function pushToMapList(map, key, value) {
@@ -388,24 +419,13 @@ async function saveTelemetry(deviceId, telemetry) {
   memoryStore.lastSequence.set(deviceId, incomingSequence);
 
   const state = compatibilityDeviceState(deviceId, telemetry);
-  memoryStore.devices.set(deviceId, state);
+  memoryStore.devices.set(deviceId, { ...memoryStore.devices.get(deviceId), ...state });
   pushToMapList(memoryStore.telemetry, deviceId, telemetry);
 
   const db = await getDb();
   if (!db) return;
 
-  const sequence = String(telemetry.sequence);
-  await db.ref().update({
-    [`dispositivos/${deviceId}`]: state,
-    [`device_telemetry/${deviceId}/${sequence}`]: telemetry,
-    [`device_events/${deviceId}/${Date.now()}`]: {
-      type: "heartbeat",
-      severity: "info",
-      timestamp: telemetry.timestamp || nowSec(),
-      location: telemetry.location || null,
-      metadata: buildHeartbeatMetadata(telemetry),
-    },
-  });
+  await db.ref().update(buildTelemetryUpdates(deviceId, telemetry, state, Date.now()));
 }
 
 async function saveEvent(deviceId, event) {
@@ -713,6 +733,8 @@ module.exports = {
   signBody,
   DEFAULT_DEVICE_SECRET,
   buildHeartbeatMetadata,
+  buildTelemetryUpdates,
+  compatibilityDeviceState,
   pickPendingCommand,
 };
 

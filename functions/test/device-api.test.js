@@ -18,6 +18,8 @@ const {
   signBody,
   DEFAULT_DEVICE_SECRET,
   buildHeartbeatMetadata,
+  buildTelemetryUpdates,
+  compatibilityDeviceState,
   pickPendingCommand,
 } = require("../index.js");
 
@@ -408,6 +410,41 @@ test("pickPendingCommand: con varios pendientes, devuelve el mas antiguo (FIFO)"
   };
   const result = pickPendingCommand(commandsById, now);
   assert.equal(result.commandId, "cmdViejo");
+});
+
+test("buildTelemetryUpdates: escribe campo por campo, nunca reemplaza el nodo dispositivos/{id} completo", () => {
+  const telemetry = telemetryPayload({ sequence: 7 });
+  const state = compatibilityDeviceState("GPS-X", telemetry);
+  const updates = buildTelemetryUpdates("GPS-X", telemetry, state, 123);
+
+  // Una clave "dispositivos/GPS-X" borraria idPropietario, alias, systemMode, geofence...
+  assert.equal(updates["dispositivos/GPS-X"], undefined);
+  for (const key of Object.keys(updates).filter((k) => k.startsWith("dispositivos/"))) {
+    assert.match(key, /^dispositivos\/GPS-X\/[^/]+$/);
+  }
+  assert.equal(updates["dispositivos/GPS-X/humo"], false);
+  assert.equal(updates["dispositivos/GPS-X/idPropietario"], undefined);
+  assert.equal(updates["dispositivos/GPS-X/systemMode"], undefined);
+  assert.deepEqual(updates["device_telemetry/GPS-X/7"], telemetry);
+  assert.equal(updates["device_events/GPS-X/123"].type, "heartbeat");
+});
+
+test("compatibilityDeviceState: protocoloActivo solo se escribe si la telemetria lo reporta", () => {
+  const sinDato = compatibilityDeviceState("GPS-X", telemetryPayload());
+  assert.equal("protocoloActivo" in sinDato, false);
+
+  const reportado = compatibilityDeviceState("GPS-X", telemetryPayload({ actuators: { protocoloActivo: true } }));
+  assert.equal(reportado.protocoloActivo, true);
+
+  const apagado = compatibilityDeviceState(
+    "GPS-X",
+    telemetryPayload({ actuators: { protocoloActivo: false }, signals: { panicButton: false } }),
+  );
+  assert.equal(apagado.protocoloActivo, false);
+
+  // Compatibilidad con firmware/simulador que no reporta protocoloActivo: el panico lo activa.
+  const panico = compatibilityDeviceState("GPS-X", telemetryPayload({ signals: { panicButton: true } }));
+  assert.equal(panico.protocoloActivo, true);
 });
 
 test("DEVICE_API_SKIP_SIGNATURE=true permite saltar la firma (solo pensado para desarrollo local)", async () => {

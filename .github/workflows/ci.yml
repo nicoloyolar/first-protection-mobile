@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: npm install
       - run: npm test
 
@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       # El emulador de Realtime Database del Firebase CLI corre sobre JVM y
       # firebase-tools exige JDK >= 21 (ver error real: "firebase-tools no
       # longer supports Java version before 21").
