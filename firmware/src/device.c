@@ -86,7 +86,7 @@ static bool lastGpsFix;
 static char recentCommands[RECENT_COMMANDS][FIELD_MAX];
 static uint8_t recentNext;
 
-/* Ultimo comando recibido de la nube, para mostrarlo en la OLED. */
+/* Ultimo comando recibido de la nube, para mostrarlo en la pantalla. */
 static struct {
     bool present;
     uint32_t receivedMs;
@@ -336,7 +336,7 @@ static void sendAck(const char *commandId, const char *target, const char *value
     printf("\"message\":\"%s\"}\r\n", r->message);
 }
 
-/* ---- Pantalla OLED ---- */
+/* ---- Pantalla LCD ---- */
 
 static const char *targetLabel(const char *target)
 {
@@ -402,7 +402,7 @@ static void renderDisplay(uint32_t nowMs)
     if (gps->fix) {
         snprintf(line, sizeof line, "GPS OK %2usat %3.0fkm/h", (unsigned)gps->satellites, gps->speedKmh);
     } else if (gps->receiving) {
-        snprintf(line, sizeof line, "GPS buscando %2usat", (unsigned)gps->satellites);
+        snprintf(line, sizeof line, "GPS buscando, ve %2u", (unsigned)gps->satellitesInView);
     } else {
         snprintf(line, sizeof line, "GPS sin datos");
     }
@@ -474,14 +474,14 @@ static void handleRemoteCommand(const char *json)
 
 static void printStatus(void)
 {
-    printf("# modo=%s motor=%s corte=%s sirena=%s humo=%s protocolo=%s oled=%s\r\n",
+    printf("# modo=%s motor=%s corte=%s sirena=%s humo=%s protocolo=%s pantalla=contraste %u, %s\r\n",
            state.armed ? "ARMADO" : "normal",
            state.ignition ? "encendido" : "apagado",
            state.cortaCorriente ? "ON" : "off",
            state.sirena ? "ON" : "off",
            state.humo ? "ON" : "off",
            state.protocoloActivo ? "ON" : "off",
-           display_ready(HAL_GetTick()) ? "conectada" : "no detectada");
+           (unsigned)display_contrast(), display_orientation());
 
     const GpsData *gps = gps_data();
     if (gps->fix) {
@@ -489,8 +489,9 @@ static void printStatus(void)
                gps->lat, gps->lng, gps->speedKmh, gps->courseDeg, (unsigned)gps->satellites, gps->hdop,
                state.movement ? "si" : "no");
     } else {
-        printf("# gps=%s sat=%u movimiento=%s\r\n", gps->receiving ? "buscando satelites" : "sin datos (revisar TX del GPS -> D2)",
-               (unsigned)gps->satellites, state.movement ? "si" : "no");
+        printf("# gps=%s sat=%u en_vista=%u movimiento=%s\r\n",
+               gps->receiving ? "buscando satelites" : "sin datos (revisar TX del GPS -> D2)",
+               (unsigned)gps->satellites, (unsigned)gps->satellitesInView, state.movement ? "si" : "no");
     }
 }
 
@@ -500,6 +501,7 @@ static void printHelp(void)
     printf("# Boton azul (boton oculto): corto = alerta de panico, mantener 2 s = protocolo de emergencia\r\n");
     printf("# Ignicion: cable de D9 a GND = llave en contacto\r\n");
     printf("# GPS: TX del modulo -> D2. Para probar sin modulo: nmea $GNRMC,...*hh\r\n");
+    printf("# Pantalla: contraste 0-63 (si se ve clara u oscura), girar (al reves), espejo (espejada)\r\n");
 }
 
 static void handleLocalCommand(const char *line)
@@ -524,6 +526,25 @@ static void handleLocalCommand(const char *line)
     }
     if (strcmp(name, "ayuda") == 0 || strcmp(name, "help") == 0) {
         printHelp();
+        return;
+    }
+    if (strcmp(name, "contraste") == 0) {
+        int value;
+        if (sscanf(arg, "%d", &value) != 1 || value < 0 || value > DISPLAY_CONTRAST_MAX) {
+            printf("# Uso: contraste 0-%d (actual %u)\r\n", DISPLAY_CONTRAST_MAX, (unsigned)display_contrast());
+            return;
+        }
+        display_set_contrast((uint8_t)value);
+        printf("# ok: contraste %d\r\n", value);
+        return;
+    }
+    if (strcmp(name, "girar") == 0 || strcmp(name, "espejo") == 0) {
+        if (name[0] == 'g') {
+            display_toggle_flip();
+        } else {
+            display_toggle_mirror();
+        }
+        printf("# ok: pantalla %s\r\n", display_orientation());
         return;
     }
 

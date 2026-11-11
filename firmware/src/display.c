@@ -1,25 +1,43 @@
 #include "display.h"
 
-#include <stdio.h>
+#include <stddef.h>
 #include <string.h>
 
 #include "stm32f4xx_hal.h"
 
 #define WIDTH 128
 #define PAGES 8
-#define I2C_TIMEOUT_MS 20
-#define RETRY_DETECT_MS 3000
+#define RECONFIGURE_MS 5000
+#define DEFAULT_CONTRAST 20
 
-#if OLED_SH1106
-#define COLUMN_OFFSET 2 /* el SH1106 tiene 132 columnas y el panel usa las del centro */
-#else
-#define COLUMN_OFFSET 0
-#endif
+/* SPI por software: el SPI1 por hardware usa D13 (LED LD2) o D3 (LED de corte).
+ * Todos los pines quedan juntos en el conector derecho de la Nucleo. */
+#define CS_PORT GPIOB /* D10 */
+#define CS_PIN GPIO_PIN_6
+#define RST_PORT GPIOA /* D11 */
+#define RST_PIN GPIO_PIN_7
+#define A0_PORT GPIOA /* D12: 0 = comando, 1 = datos */
+#define A0_PIN GPIO_PIN_6
+#define SCK_PORT GPIOB /* D15 */
+#define SCK_PIN GPIO_PIN_8
+#define SDA_PORT GPIOB /* D14 */
+#define SDA_PIN GPIO_PIN_9
 
-static I2C_HandleTypeDef hi2c1;
+/* ~1 MHz de reloj: el modulo tiene resistencias en serie en cada linea
+ * (R1-R5) que redondean los flancos, y los cables Dupont suman capacidad. */
+#define SPI_HALF_PERIOD_LOOPS 10
+
+/* El ST7567 tiene 132 columnas y el panel usa 128: con las columnas
+ * invertidas la imagen queda corrida 4 columnas. */
+#define REVERSED_COLUMN_OFFSET 4
+
 static uint8_t framebuffer[PAGES][WIDTH];
-static uint16_t address; /* direccion I2C de 8 bits; 0 = no detectada */
-static uint32_t lastDetectMs;
+static uint8_t contrast = DEFAULT_CONTRAST;
+/* Sentido de columnas (eje horizontal) y de filas (eje vertical). Valores
+ * de fabrica: los que se leen al derecho en el GM12864-03A del banco. */
+static bool columnsReversed = false;
+static bool rowsReversed = false;
+static uint32_t lastConfigureMs;
 
 /* Fuente 5x7 clasica, ASCII 32..126. Cada byte es una columna, bit 0 arriba. */
 static const uint8_t font5x7[][5] = {
@@ -57,98 +75,132 @@ static const uint8_t font5x7[][5] = {
     {0x00, 0x41, 0x36, 0x08, 0x00}, {0x08, 0x08, 0x2A, 0x1C, 0x08},
 };
 
-static bool sendCommands(const uint8_t *cmds, uint16_t len)
+/* ---- SPI por software (modo 3: SCK en reposo alto, el ST7567 lee SDA en el flanco de subida) ---- */
+
+static inline void pinWrite(GPIO_TypeDef *port, uint16_t pin, bool high)
 {
-    /* Byte de control 0x00 = lo que sigue son comandos. */
-    return HAL_I2C_Mem_Write(&hi2c1, address, 0x00, I2C_MEMADD_SIZE_8BIT, (uint8_t *)cmds, len,
-                             I2C_TIMEOUT_MS) == HAL_OK;
+    port->BSRR = high ? pin : (uint32_t)pin << 16;
 }
 
-static bool detectAndConfigure(void)
+static void spiDelay(void)
 {
-    static const uint16_t candidates[] = {0x3C << 1, 0x3D << 1};
-    static const uint8_t initSequence[] = {
-        0xAE,       /* apagar */
-        0xD5, 0x80, /* reloj */
-        0xA8, 0x3F, /* 64 filas */
-        0xD3, 0x00, /* sin desplazamiento vertical */
-        0x40,       /* linea de inicio 0 */
-#if OLED_SH1106
-        0xAD, 0x8B, /* DC-DC interno encendido */
-#else
-        0x8D, 0x14, /* charge pump encendido */
-        0x20, 0x02, /* direccionamiento por pagina */
-#endif
-        0xA1,       /* columnas espejadas: origen arriba a la izquierda */
-        0xC8,       /* filas de abajo hacia arriba */
-        0xDA, 0x12, /* configuracion de pines COM */
-        0x81, 0xCF, /* contraste */
-        0xD9, 0xF1, /* precarga */
-        0xDB, 0x40, /* VCOMH */
-        0xA4,       /* mostrar la RAM */
-        0xA6,       /* video normal */
-        0xAF,       /* encender */
-    };
+    for (volatile int i = 0; i < SPI_HALF_PERIOD_LOOPS; i++) {
+    }
+}
 
-    address = 0;
-    for (size_t i = 0; i < sizeof candidates / sizeof candidates[0]; i++) {
-        if (HAL_I2C_IsDeviceReady(&hi2c1, candidates[i], 2, I2C_TIMEOUT_MS) == HAL_OK) {
-            address = candidates[i];
-            break;
-        }
+static void spiWriteByte(uint8_t byte)
+{
+    for (int bit = 7; bit >= 0; bit--) {
+        pinWrite(SCK_PORT, SCK_PIN, false);
+        pinWrite(SDA_PORT, SDA_PIN, (byte >> bit) & 1);
+        spiDelay();
+        pinWrite(SCK_PORT, SCK_PIN, true);
+        spiDelay();
     }
-    if (!address) {
-        return false;
+}
+
+static void writeBytes(bool isData, const uint8_t *bytes, size_t len)
+{
+    pinWrite(A0_PORT, A0_PIN, isData);
+    pinWrite(CS_PORT, CS_PIN, false);
+    for (size_t i = 0; i < len; i++) {
+        spiWriteByte(bytes[i]);
     }
-    if (!sendCommands(initSequence, sizeof initSequence)) {
-        address = 0;
-        return false;
-    }
-    printf("# OLED detectada en 0x%02X (%s)\r\n", address >> 1, OLED_SH1106 ? "SH1106" : "SSD1306");
-    return true;
+    pinWrite(CS_PORT, CS_PIN, true);
+}
+
+/* Configuracion completa sin reset: se puede reenviar en cualquier momento. */
+static void configure(void)
+{
+    const uint8_t config[] = {
+        0xA2,                       /* bias 1/9 */
+        columnsReversed ? 0xA1 : 0xA0, /* sentido de las columnas */
+        rowsReversed ? 0xC8 : 0xC0,    /* sentido de las filas */
+        0x40,                       /* linea de inicio 0 */
+        0x25,                       /* razon del regulador interno */
+        0x81, contrast,             /* contraste (electronic volume) */
+        0x2F,                       /* booster + regulador + seguidor encendidos */
+        0xA6,                       /* video normal */
+        0xA4,                       /* mostrar la RAM */
+        0xAF,                       /* encender */
+    };
+    writeBytes(false, config, sizeof config);
 }
 
 void display_init(void)
 {
     GPIO_InitTypeDef gpio = {0};
 
+    __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_I2C1_CLK_ENABLE();
 
-    gpio.Pin = GPIO_PIN_8 | GPIO_PIN_9;
-    gpio.Mode = GPIO_MODE_AF_OD;
-    gpio.Pull = GPIO_PULLUP; /* los modulos suelen traer pull-ups propios; estos son respaldo */
-    gpio.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    gpio.Alternate = GPIO_AF4_I2C1;
+    pinWrite(CS_PORT, CS_PIN, true);
+    pinWrite(SCK_PORT, SCK_PIN, true);
+
+    gpio.Mode = GPIO_MODE_OUTPUT_PP;
+    gpio.Pull = GPIO_NOPULL;
+    gpio.Speed = GPIO_SPEED_FREQ_LOW;
+    gpio.Pin = CS_PIN | SCK_PIN | SDA_PIN;
     HAL_GPIO_Init(GPIOB, &gpio);
+    gpio.Pin = RST_PIN | A0_PIN;
+    HAL_GPIO_Init(GPIOA, &gpio);
 
-    hi2c1.Instance = I2C1;
-    hi2c1.Init.ClockSpeed = 400000;
-    hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-    hi2c1.Init.OwnAddress1 = 0;
-    hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-    hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-    hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-    hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-    if (HAL_I2C_Init(&hi2c1) != HAL_OK) {
-        printf("# OLED: no se pudo iniciar I2C1\r\n");
-        return;
-    }
+    /* Reset por hardware y luego por software. */
+    pinWrite(RST_PORT, RST_PIN, false);
+    HAL_Delay(5);
+    pinWrite(RST_PORT, RST_PIN, true);
+    HAL_Delay(5);
+    const uint8_t softReset = 0xE2;
+    writeBytes(false, &softReset, 1);
+    HAL_Delay(5);
 
-    lastDetectMs = HAL_GetTick();
-    if (!detectAndConfigure()) {
-        printf("# OLED no detectada (SCL=D15, SDA=D14, VCC=3V3); se reintenta cada 3 s\r\n");
-    }
+    configure();
+    lastConfigureMs = HAL_GetTick();
 }
 
 bool display_ready(uint32_t nowMs)
 {
-    if (!address && nowMs - lastDetectMs >= RETRY_DETECT_MS) {
-        lastDetectMs = nowMs;
-        detectAndConfigure();
+    if (nowMs - lastConfigureMs >= RECONFIGURE_MS) {
+        lastConfigureMs = nowMs;
+        configure();
     }
-    return address != 0;
+    return true;
 }
+
+void display_set_contrast(uint8_t value)
+{
+    contrast = value > DISPLAY_CONTRAST_MAX ? DISPLAY_CONTRAST_MAX : value;
+    configure();
+}
+
+uint8_t display_contrast(void)
+{
+    return contrast;
+}
+
+void display_toggle_flip(void)
+{
+    columnsReversed = !columnsReversed;
+    rowsReversed = !rowsReversed;
+    configure();
+    display_flush();
+}
+
+void display_toggle_mirror(void)
+{
+    columnsReversed = !columnsReversed;
+    configure();
+    display_flush();
+}
+
+const char *display_orientation(void)
+{
+    if (!columnsReversed && !rowsReversed) return "de fabrica";
+    if (columnsReversed && rowsReversed) return "girada 180";
+    return columnsReversed ? "espejada" : "girada 180 y espejada";
+}
+
+/* ---- Framebuffer ---- */
 
 void display_clear(void)
 {
@@ -185,23 +237,14 @@ void display_invert_row(uint8_t row)
 
 void display_flush(void)
 {
-    if (!address) {
-        return;
-    }
+    uint8_t column = columnsReversed ? REVERSED_COLUMN_OFFSET : 0;
     for (uint8_t page = 0; page < PAGES; page++) {
-        const uint8_t setPage[] = {
+        const uint8_t setPosition[] = {
             (uint8_t)(0xB0 | page),
-            (uint8_t)(0x00 | (COLUMN_OFFSET & 0x0F)),
-            (uint8_t)(0x10 | (COLUMN_OFFSET >> 4)),
+            (uint8_t)(0x10 | (column >> 4)),
+            (uint8_t)(0x00 | (column & 0x0F)),
         };
-        /* Byte de control 0x40 = lo que sigue son datos de pixeles. */
-        if (!sendCommands(setPage, sizeof setPage) ||
-            HAL_I2C_Mem_Write(&hi2c1, address, 0x40, I2C_MEMADD_SIZE_8BIT, framebuffer[page], WIDTH,
-                              I2C_TIMEOUT_MS) != HAL_OK) {
-            /* Se desconecto: se vuelve a buscar en el proximo display_ready. */
-            printf("# OLED: error de I2C, se reintenta\r\n");
-            address = 0;
-            return;
-        }
+        writeBytes(false, setPosition, sizeof setPosition);
+        writeBytes(true, framebuffer[page], WIDTH);
     }
 }

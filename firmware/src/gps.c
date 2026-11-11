@@ -24,6 +24,8 @@ static char sentence[NMEA_MAX];
 static size_t sentenceLen;
 
 static GpsData data;
+/* Satelites en vista por constelacion: GPS (GP), GLONASS (GL), Galileo (GA), BeiDou (GB/BD). */
+static uint8_t inViewByConstellation[4];
 static bool anyByte;
 static uint32_t lastByteMs;
 static uint32_t lastValidRmcMs;
@@ -162,6 +164,24 @@ static void parseGga(char **f, int n)
     }
 }
 
+/* $xxGSV,total_mensajes,numero_mensaje,satelites_en_vista,... (uno por constelacion) */
+static void parseGsv(const char *talker, char **f, int n)
+{
+    int index;
+    if (n < 4) {
+        return;
+    }
+    if (strncmp(talker, "GP", 2) == 0) index = 0;
+    else if (strncmp(talker, "GL", 2) == 0) index = 1;
+    else if (strncmp(talker, "GA", 2) == 0) index = 2;
+    else if (strncmp(talker, "GB", 2) == 0 || strncmp(talker, "BD", 2) == 0) index = 3;
+    else return;
+
+    inViewByConstellation[index] = (uint8_t)atoi(f[3]);
+    data.satellitesInView = (uint8_t)(inViewByConstellation[0] + inViewByConstellation[1] +
+                                      inViewByConstellation[2] + inViewByConstellation[3]);
+}
+
 static void handleSentence(const char *s, uint32_t nowMs)
 {
     char copy[NMEA_MAX];
@@ -187,6 +207,8 @@ static void handleSentence(const char *s, uint32_t nowMs)
         parseRmc(fields, n, nowMs);
     } else if (strcmp(type, "GGA") == 0) {
         parseGga(fields, n);
+    } else if (strcmp(type, "GSV") == 0) {
+        parseGsv(fields[0], fields, n);
     }
 }
 

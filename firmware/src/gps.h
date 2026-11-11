@@ -7,7 +7,8 @@
 /*
  * GPS u-blox NEO-M8N (GY-GPSV3-NEO) por USART1 a 9600 baudios, NMEA:
  *   TX del GPS -> D2 (PA10), RX del GPS -> D8 (PA9, opcional).
- * Lee RMC (posicion, velocidad, rumbo) y GGA (satelites, HDOP), con
+ * Lee RMC (posicion, velocidad, rumbo), GGA (satelites, HDOP) y GSV
+ * (satelites en vista, para saber si la antena ve el cielo antes del fix), con
  * talker GP o GN (el M8N usa GN al combinar GPS + GLONASS/Galileo).
  */
 
@@ -19,7 +20,8 @@ typedef struct {
     double lng;
     float speedKmh;
     float courseDeg;
-    uint8_t satellites;
+    uint8_t satellites;       /* usados en el fix (GGA); 0 hasta tener fix */
+    uint8_t satellitesInView; /* visibles en el cielo (GSV), sumando constelaciones */
     float hdop;
 } GpsData;
 
