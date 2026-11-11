@@ -151,7 +151,7 @@ El firmware debe manejar:
 ## Componentes Confirmados (2026-07-01)
 
 - GPS: modulo GY-GPSV3-NEO (chip u-blox NEO), UART.
-- Pantalla local de estado/debug: OLED 1.3" 128x64 blanco/azul, SPI o I2C. Se recomienda I2C de 4 pines para no competir por GPIO con GPS y actuadores. No reemplaza ninguna entrada fisica listada arriba; es solo para diagnostico en banco.
+- Pantalla local de estado/debug: LCD monocromatica 128x64 GM12864-03A (controlador ST7567), SPI. Corregido 2026-11-05: antes decia OLED 1.3" I2C, pero el componente comprado es esta LCD. No reemplaza ninguna entrada fisica listada arriba; es solo para diagnostico en banco.
 
 ## Pendientes De Decision
 

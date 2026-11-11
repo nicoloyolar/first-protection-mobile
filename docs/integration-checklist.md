@@ -78,7 +78,7 @@ Este checklist mantiene el estado del MVP, backend y futuro dispositivo STM. Act
 - [ ] Confirmar variante de bandas del A7670 contra el operador del piloto y validar consumo/DC-DC.
 - [ ] Evaluar upgrade a SIM7600 (LTE Cat-4) para version profesional/produccion futura.
 - [x] Definir modulo GPS. (GY-GPSV3-NEO, chip u-blox NEO, UART)
-- [x] Definir pantalla local de estado/debug. (OLED 1.3" 128x64 blanco/azul, usar I2C de 4 pines en vez de SPI de 7 para ahorrar GPIO)
+- [x] Definir pantalla local de estado/debug. (LCD 128x64 GM12864-03A, controlador ST7567, SPI; corregido 2026-11-05, antes decia OLED 1.3" I2C)
 - [ ] Definir circuito de sirena.
 - [ ] Definir circuito de humo.
 - [ ] Definir circuito de corta corriente.
@@ -134,7 +134,7 @@ Siguiente hito: registrar `liveLocation` del usuario + logica de cercania usuari
 Componentes confirmados por el equipo de hardware:
 
 - GPS: modulo GY-GPSV3-NEO (chip u-blox NEO), comunicacion UART.
-- Pantalla de estado/debug: OLED 1.3" 128x64 blanco/azul, SPI o I2C. Se recomienda I2C (4 pines) para liberar GPIO frente a UART del GPS y las salidas de actuadores.
+- Pantalla de estado/debug: LCD monocromatica 128x64 GM12864-03A (controlador ST7567), SPI. Corregido 2026-11-05: antes decia OLED 1.3" I2C, pero el componente comprado es esta LCD. Pines en `firmware/README.md`.
 
 Pendiente critico (resuelto, ver nota 2026-08-12 abajo): no habia modulo SIM/celular definido. Sin esto el STM no puede reportar telemetria ni recibir comandos fuera de una red WiFi conocida, lo que bloqueaba el inicio de la Fase 3 (Firmware MVP) del roadmap, ya que "levantar conectividad" es el primer paso antes de leer GPS o enviar heartbeat. Ver `docs/hardware-roadmap.md` y `docs/physical-device-integration.md`.
 

@@ -29,7 +29,7 @@ Entregables:
 ### Estado Actual (2026-07-01)
 
 - GPS definido: modulo GY-GPSV3-NEO (chip u-blox NEO), UART.
-- Pantalla local definida: OLED 1.3" 128x64 blanco/azul. Usar interfaz I2C (4 pines) en vez de SPI (7 pines) para ahorrar GPIO, dado que ya se ocupan pines en UART (GPS) y salidas digitales (actuadores).
+- Pantalla local definida: LCD monocromatica 128x64 **GM12864-03A** (controlador **ST7567**), interfaz **SPI**. *Corregido 2026-11-05:* aqui decia "OLED 1.3" 128x64 blanco/azul, I2C", pero el componente comprado es esta LCD (confirmado con el modulo fisico: pines CS, RST, A0, SCK, SDA, GND, VDD, BA, BK). Usa 5 GPIO (SPI por software, para no chocar con el LED LD2 ni con el LED de corte) en vez de los 2 que habria usado I2C; con la Nucleo-F401RE sobran pines. Trae regulador propio y proteccion en las lineas de senal, asi que funciona a 3.3 V. Conexion en `firmware/README.md`.
 - Modem/conectividad: sin definir. No hay modulo SIM/celular todavia. Este es el bloqueo principal de esta fase: sin conectividad resuelta no se puede avanzar a Fase 3, donde "levantar conectividad" es el primer paso del firmware MVP.
 
 ### Decision De Modem (2026-08-12)

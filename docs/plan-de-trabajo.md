@@ -146,10 +146,11 @@ Al verificar el wrapper de Cloud Functions contra el emulador (`firebase emulato
 | 🟠 | Circuitos de sirena, humo y corta corriente sin definir (relés/MOSFETs optoaislados marcados como "requerido" pero sin circuito). | `docs/hardware-roadmap.md` Fase 0; *Estado del proyecto* (PDF) sección "Esquema de hardware definido para prototipo". | |
 | 🟠 | Fuente DC-DC automotriz (12V → 5V/3.3V) sin validar con protecciones de ruido, fusible y transientes. | *Estado del proyecto* (PDF), "Pendientes de validación hardware". | No mencionado en los docs de julio — información nueva que suma al roadmap. |
 | 🟠 | Antenas LTE y GNSS sin definir conector/tipo exacto según placa final. | *Estado del proyecto* / *Arquitectura técnica* (PDF). | |
-| 🟠 | Pinout del STM32 sin definir: UART GNSS, UART/USB módem, GPIO actuadores, ADC voltaje/ignición. | *Arquitectura técnica* (PDF), "Pendientes técnicos". | Bloquea el diseño de la placa final aunque los componentes ya estén elegidos. |
+| 🟡 | Pinout del STM32: **definido para el banco** (NUCLEO-F401RE, ver `firmware/README.md`, 2026-11-05) — UART GNSS, GPIO actuadores, ignición y pantalla. Falta UART del módem (reservado USART6) y ADC de voltaje. | *Arquitectura técnica* (PDF), "Pendientes técnicos"; `firmware/README.md`. | El pinout de la placa final puede cambiar según el modelo STM32 que se elija, pero el de banco ya permite avanzar con firmware real. |
 | 🟠 | Botón físico y tipo de pulsaciones sin definir a nivel de hardware (el comportamiento lógico ya está especificado en `physical-device-integration.md`). | | |
 | 🟡 | Lectura de voltaje/ignición (diagnóstico eléctrico) sin circuito ADC/divisor definido. | *Estado del proyecto* (PDF). | |
-| 🟡 | Pantalla de diagnóstico OLED ya definida (✅). | `docs/hardware-roadmap.md` Fase 0. | Único ítem de esta fase ya resuelto sin ambigüedad entre fuentes. |
+| 🟢 **Corregido (2026-11-05)** | Pantalla de diagnóstico: LCD monocromática 128x64 **GM12864-03A** (controlador ST7567, SPI). | Módulo físico (pines CS/RST/A0/SCK/SDA/GND/VDD/BA/BK); `firmware/src/display.c`. | Los docs decían "OLED 1.3" I2C", pero el componente comprado es esta LCD. Driver reescrito para ST7567; contraste y orientación ajustables en vivo por serial (`contraste N`, `girar`). |
+| 🟡 **En curso (desde 2026-10-20)** | Firmware MVP (Fase 3) sobre NUCLEO-F401RE en banco: LEDs simulan humo/sirena/corte/protocolo/armado, botón oculto, ignición, GPS NEO-M8N y pantalla LCD. Habla con la `deviceApi` real vía `scripts/stm_serial_bridge.py`, que cumple el rol del módem A7670 por USB hasta tenerlo. | `firmware/`, `firmware/README.md`. | Falta validar GPS y LCD con los módulos físicos conectados, y reemplazar el puente USB por el A7670. |
 
 ---
 
