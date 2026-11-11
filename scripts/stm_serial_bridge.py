@@ -153,11 +153,18 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     client = ApiClient(args.base_url, args.device_id, args.secret, dry_run=False)
-    with serial.Serial(args.port, 115200, timeout=0.1) as port:
-        try:
-            Bridge(port, client, args.device_id, args.poll_interval).run()
-        except KeyboardInterrupt:
-            print("\nPuente detenido.")
+    # Si se desconecta el USB (por ejemplo para cablear), espera a que vuelva
+    # la placa en vez de terminar.
+    try:
+        while True:
+            try:
+                with serial.Serial(args.port, 115200, timeout=0.1) as port:
+                    Bridge(port, client, args.device_id, args.poll_interval).run()
+            except serial.SerialException as exc:
+                print(f"[warn] puerto {args.port} no disponible ({exc}); reintentando en 3 s", file=sys.stderr)
+                time.sleep(3)
+    except KeyboardInterrupt:
+        print("\nPuente detenido.")
 
 
 if __name__ == "__main__":
