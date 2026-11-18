@@ -1,11 +1,11 @@
 {
-    "name": "first_protection",
-    "short_name": "first_protection",
+    "name": "First Protection",
+    "short_name": "First Protection",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#121212",
+    "theme_color": "#E65100",
+    "description": "First Protection: monitoreo y control de vehiculos.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

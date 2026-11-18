@@ -22,15 +22,24 @@ from typing import Any
 
 import serial
 
+from pc_audio import DEFAULT_GOOGLE_VOICE, GoogleCloudVoice, PcAudioPlayer, WindowsVoice
 from stm_simulator import ApiClient
 
 
 class Bridge:
-    def __init__(self, port: serial.Serial, client: ApiClient, device_id: str, poll_interval: float) -> None:
+    def __init__(
+        self,
+        port: serial.Serial,
+        client: ApiClient,
+        device_id: str,
+        poll_interval: float,
+        audio: PcAudioPlayer | None = None,
+    ) -> None:
         self.port = port
         self.client = client
         self.device_id = device_id
         self.poll_interval = poll_interval
+        self.audio = audio
         self.base_path = f"/api/v1/devices/{device_id}"
         # El STM todavia no guarda nada en flash: su sequence vuelve a 1 en cada
         # reinicio y el backend descarta sequences menores al ultimo recibido.
@@ -47,6 +56,8 @@ class Bridge:
         kind, _, payload_text = line.partition(" ")
         if kind == "#":
             print(f"[stm] {payload_text}")
+            if self.audio:
+                self.audio.handle_log_line(payload_text)
             return
         if kind not in ("TEL", "EVT", "ACK"):
             print(f"[stm?] {line}")
@@ -82,7 +93,8 @@ class Bridge:
     def send_event(self, event: dict[str, Any]) -> None:
         event["sequence"] = self.next_sequence()
         event["timestamp"] = int(time.time())
-        if self.last_location:
+        # Sin primer fix la telemetria no trae lat/lng: el evento va sin ubicacion.
+        if self.last_location and "lat" in self.last_location:
             event["location"] = {"lat": self.last_location["lat"], "lng": self.last_location["lng"]}
 
         response = self.client.post(f"{self.base_path}/events", event)
@@ -124,6 +136,10 @@ class Bridge:
         # telemetria al arrancar para no esperar el siguiente ciclo del STM.
         self.port.reset_input_buffer()
         self.port.write(b"estado\r\n")
+        # Con audio en el PC, pide el catalogo de mensajes para generarlos por
+        # adelantado: asi el primer mensaje real suena sin demora.
+        if self.audio and self.audio.available:
+            self.port.write(b"audio catalogo\r\n")
         while True:
             raw = self.port.readline()
             if raw:
@@ -147,19 +163,35 @@ def parse_args() -> argparse.Namespace:
         help="Secreto HMAC. Por defecto la variable de entorno FP_DEVICE_SECRET (no lo pases por linea de comandos en produccion).",
     )
     parser.add_argument("--poll-interval", type=float, default=2.0, help="Segundos entre consultas de comandos.")
+    parser.add_argument(
+        "--no-pc-audio",
+        action="store_true",
+        help="No reproducir los mensajes de voz en el parlante del PC (por defecto suenan en Windows).",
+    )
+    parser.add_argument(
+        "--voice",
+        default=DEFAULT_GOOGLE_VOICE,
+        help="Voz de Google Cloud Text-to-Speech para los mensajes, o 'windows' para la voz local sin internet.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     client = ApiClient(args.base_url, args.device_id, args.secret, dry_run=False)
+    audio = None
+    if not args.no_pc_audio:
+        voice = WindowsVoice() if args.voice == "windows" else GoogleCloudVoice(args.voice)
+        audio = PcAudioPlayer(voice)
+        if audio.available:
+            print(f"Mensajes de voz por el parlante del PC con {voice.id} (audios en {audio.directory})")
     # Si se desconecta el USB (por ejemplo para cablear), espera a que vuelva
     # la placa en vez de terminar.
     try:
         while True:
             try:
                 with serial.Serial(args.port, 115200, timeout=0.1) as port:
-                    Bridge(port, client, args.device_id, args.poll_interval).run()
+                    Bridge(port, client, args.device_id, args.poll_interval, audio).run()
             except serial.SerialException as exc:
                 print(f"[warn] puerto {args.port} no disponible ({exc}); reintentando en 3 s", file=sys.stderr)
                 time.sleep(3)

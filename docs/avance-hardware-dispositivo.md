@@ -6,7 +6,7 @@ Fecha: 2026-08-12.
 
 ## Resumen
 
-El dispositivo físico ("STM") es el equipo que se instala en el vehículo y que reporta ubicación, estado y ejecuta las acciones de seguridad (humo, sirena, corte de corriente). El diseño del prototipo ya está definido a nivel de arquitectura: qué componente cumple cada función y cómo se comunican entre sí. De los 10 componentes que forman el dispositivo, **4 están confirmados y con especificación técnica en mano** (incluyendo el módem, recién cerrado), y el resto está identificado pero pendiente de diseño de circuito o de compra.
+El dispositivo físico ("STM") es el equipo que se instala en el vehículo y que reporta ubicación, estado y ejecuta las acciones de seguridad (humo, sirena, corte de corriente). El diseño del prototipo ya está definido a nivel de arquitectura: qué componente cumple cada función y cómo se comunican entre sí. De los 11 componentes que forman el dispositivo (los 10 originales más el módulo de mensajes de voz, agregado el 2026-11-10), **4 están confirmados y con especificación técnica en mano** (incluyendo el módem, recién cerrado), y el resto está identificado pero pendiente de diseño de circuito o de compra.
 
 **Nota de alcance:** esta etapa del proyecto es un prototipo/MVP para validar el sistema completo funcionando ("dar la vuelta" con un vehículo de prueba), no un producto para fabricar en volumen. Las decisiones de componentes priorizan velocidad y costo para esta etapa; donde aplica, se deja anotado el camino de upgrade para una versión más robusta más adelante.
 
@@ -23,6 +23,7 @@ El dispositivo físico ("STM") es el equipo que se instala en el vehículo y que
 | **Antenas (LTE y GNSS)** | Recepción de señal celular y satelital. | 🟠 Pendiente de diseño | Tipo de antena y conector exacto dependen de la placa final. |
 | **Relés/MOSFETs de potencia (sirena, humo, corte de corriente)** | Circuito que permite que el controlador active físicamente cada sistema de seguridad. | 🟠 Pendiente de diseño | Los 3 actuadores están identificados; falta definir el circuito de potencia aislado para cada uno. |
 | **Botón físico oculto** | Activación manual de una alerta o protocolo de emergencia desde dentro del vehículo. | 🟠 Pendiente de diseño | El comportamiento ya está definido a nivel funcional (pulsación corta = alerta, pulsación larga = protocolo activo); falta el circuito físico. |
+| **Mensajes de voz (módulo de audio y parlante)** | Reproduce mensajes grabados en la cabina para cada acción de seguridad (sistema armado, protocolo activado, movimiento no autorizado, etc.), además de la sirena. | 🟠 Pendiente de compra | Agregado el 2026-11-10. Propuesta: módulo DFPlayer Mini (MP3 con tarjeta microSD y amplificador integrado) con un parlante de 3 W. La programación ya está preparada; los mensajes y sus textos se definen con el cliente (ver plan de trabajo, sección 11). |
 | **Lectura de voltaje/ignición** | Diagnóstico eléctrico: saber si el vehículo está encendido y el estado de la batería. | 🟡 Pendiente de diseño | Requiere un circuito de lectura (divisor de voltaje protegido) todavía no definido. |
 
 **Leyenda:** 🟢 confirmado y listo para integrar · 🟡 en la etapa final de definición · 🟠 identificado, pendiente de diseño de circuito o compra.

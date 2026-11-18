@@ -1,2 +1,4 @@
 .pio/
 .vscode/
+# Audios de voz generados por scripts/pc_audio.py (se regeneran solos)
+audio/

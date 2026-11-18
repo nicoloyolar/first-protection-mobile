@@ -199,17 +199,25 @@ function validateDeviceRequest(req, rawBodyText, deviceId) {
   return null;
 }
 
+/// true si la telemetria trae una posicion (lat/lng). Un dispositivo que
+/// todavia no tuvo fix de GPS la omite: es preferible a inventar una.
+function hasReportedPosition(location) {
+  return Boolean(location) && (location.lat !== undefined || location.lng !== undefined);
+}
+
 function validateTelemetry(payload) {
   const location = payload.location || {};
   const power = payload.power || {};
-  const lat = Number(location.lat);
-  const lng = Number(location.lng);
 
-  if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
-    return "location.lat out of range";
-  }
-  if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
-    return "location.lng out of range";
+  if (hasReportedPosition(location)) {
+    const lat = Number(location.lat);
+    const lng = Number(location.lng);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+      return "location.lat out of range";
+    }
+    if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+      return "location.lng out of range";
+    }
   }
   if (!Number.isFinite(Number(payload.sequence))) {
     return "sequence is required";
@@ -289,20 +297,27 @@ function compatibilityDeviceState(deviceId, telemetry) {
   const actuators = telemetry.actuators || {};
   const network = telemetry.network || {};
   const protocoloActivo = reportedProtocoloActivo(actuators, signals);
+  // Sin posicion reportada no se escribe ubicacion: se conserva la ultima
+  // conocida (ver buildTelemetryUpdates), en vez de pisarla con 0,0.
+  const position = hasReportedPosition(location)
+    ? {
+        location,
+        latitud: Number(location.lat),
+        longitud: Number(location.lng),
+        velocidad: Number(location.speedKmh || 0),
+      }
+    : {};
 
   return {
     id: deviceId,
     lastSeenAt: nowMs(),
     connectionState: network.online === false ? "offline" : "online",
-    location,
+    ...position,
     power,
     signals,
     actuators,
     firmwareVersion: telemetry.firmwareVersion || "",
     hardwareVersion: telemetry.hardwareVersion || "",
-    latitud: Number(location.lat || 0),
-    longitud: Number(location.lng || 0),
-    velocidad: Number(location.speedKmh || 0),
     voltaje: Number(power.vehicleVoltage || 0),
     humo: actuators.humo === true,
     sirenaActiva: actuators.sirena === true,
@@ -320,6 +335,14 @@ function buildTelemetryUpdates(deviceId, telemetry, state, eventKey) {
   const updates = {};
   for (const [field, value] of Object.entries(state)) {
     updates[`dispositivos/${deviceId}/${field}`] = value;
+  }
+  // Sin posicion: se actualizan solo los campos de diagnostico del GPS que
+  // vengan (satelites...) y se marca sin fix, conservando lat/lng anteriores.
+  if (!hasReportedPosition(telemetry.location)) {
+    for (const [field, value] of Object.entries(telemetry.location || {})) {
+      updates[`dispositivos/${deviceId}/location/${field}`] = value;
+    }
+    updates[`dispositivos/${deviceId}/location/gpsFix`] = false;
   }
   updates[`device_telemetry/${deviceId}/${String(telemetry.sequence)}`] = telemetry;
   updates[`device_events/${deviceId}/${eventKey}`] = {

@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define FW_VERSION "0.6.0"
+#define FW_VERSION "0.9.0"
 #define HW_VERSION "nucleo-f401re"
 
 /*

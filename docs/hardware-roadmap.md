@@ -14,6 +14,7 @@ Estado esperado: decisiones claras antes de firmware real.
 - Definir modem o conectividad.
 - Definir modulo GPS.
 - Definir actuadores y circuitos: humo, sirena, relay/corte.
+- Definir mensajes de voz: propuesta DFPlayer Mini + parlante 3 W (2026-11-10). Mensajes a confirmar con el cliente en `docs/plan-de-trabajo.md` seccion 11.
 - Definir alimentacion principal y respaldo.
 - Definir boton fisico y tipo de pulsaciones.
 - Definir riesgos legales/operativos del corta corriente.

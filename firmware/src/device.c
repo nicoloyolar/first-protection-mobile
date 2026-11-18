@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "audio.h"
 #include "display.h"
 #include "gps.h"
 #include "stm32f4xx_hal.h"
@@ -42,11 +43,6 @@
  * bajo 3 km/h para que el ruido del GPS cerca del umbral no lo haga oscilar. */
 #define MOVING_START_KMH 5.0f
 #define MOVING_STOP_KMH 3.0f
-
-/* Ubicacion de prueba mientras el GPS no haya tenido fix nunca (la del simulador). */
-#define DEFAULT_LAT -36.82699
-#define DEFAULT_LNG -73.04977
-
 typedef struct {
     bool humo;
     bool sirena;
@@ -122,12 +118,13 @@ static void sendTelemetry(void)
 {
     const GpsData *gps = gps_data();
 
-    /* Sin fix se manda la ultima posicion conocida (o la de prueba si nunca hubo)
-     * con gpsFix=false, y sin velocidad ni rumbo: un dato desconocido no es 0 km/h. */
-    printf("TEL {\"sequence\":%lu,\"location\":{\"lat\":%.7f,\"lng\":%.7f,",
-           ++state.sequence,
-           gps->hasEverFix ? gps->lat : DEFAULT_LAT,
-           gps->hasEverFix ? gps->lng : DEFAULT_LNG);
+    /* Sin fix se manda la ultima posicion conocida con gpsFix=false, sin velocidad
+     * ni rumbo (un dato desconocido no es 0 km/h). Si nunca hubo fix no se manda
+     * posicion: el backend conserva la ultima que tenga, nunca una inventada. */
+    printf("TEL {\"sequence\":%lu,\"location\":{", ++state.sequence);
+    if (gps->hasEverFix) {
+        printf("\"lat\":%.7f,\"lng\":%.7f,", gps->lat, gps->lng);
+    }
     if (gps->fix) {
         printf("\"speedKmh\":%.1f,\"heading\":%.1f,", gps->speedKmh, gps->courseDeg);
     }
@@ -241,6 +238,13 @@ static void setActuator(const char *target, bool value, CommandResult *r)
     if (*field != value) {
         *field = value;
         sendActuatorChanged(target, value);
+        if (field == &state.protocoloActivo) {
+            audio_play(value ? AUDIO_PROTOCOLO_ON : AUDIO_PROTOCOLO_OFF);
+        } else if (field == &state.cortaCorriente && value) {
+            audio_play(AUDIO_CORTE_ON);
+        } else if (field == &state.humo && value) {
+            audio_play(AUDIO_HUMO_ON);
+        }
     }
     /* El protocolo de emergencia arrastra la sirena, igual que scripts/stm_simulator.py. */
     if (field == &state.protocoloActivo && state.sirena != value) {
@@ -270,7 +274,10 @@ static void setSystemMode(const char *mode, CommandResult *r)
         return;
     }
 
-    state.armed = armed;
+    if (state.armed != armed) {
+        state.armed = armed;
+        audio_play(armed ? AUDIO_ARMADO : AUDIO_DESARMADO);
+    }
     r->status = "executed";
     r->errorCode = NULL;
     snprintf(r->message, sizeof r->message, "systemMode set to %s", mode);
@@ -398,8 +405,12 @@ static void renderDisplay(uint32_t nowMs)
     snprintf(line, sizeof line, "Modo %-7s Ign %s", state.armed ? "ARMADO" : "NORMAL", state.ignition ? "ON" : "OFF");
     display_text(1, 0, line, false);
 
+    /* Mientras suena un mensaje de voz, la linea del GPS muestra cual es. */
     const GpsData *gps = gps_data();
-    if (gps->fix) {
+    const char *playing = audio_now_playing(nowMs);
+    if (playing) {
+        snprintf(line, sizeof line, "> Audio: %s", playing);
+    } else if (gps->fix) {
         snprintf(line, sizeof line, "GPS OK %2usat %3.0fkm/h", (unsigned)gps->satellites, gps->speedKmh);
     } else if (gps->receiving) {
         snprintf(line, sizeof line, "GPS buscando, ve %2u", (unsigned)gps->satellitesInView);
@@ -407,6 +418,9 @@ static void renderDisplay(uint32_t nowMs)
         snprintf(line, sizeof line, "GPS sin datos");
     }
     display_text(2, 0, line, false);
+    if (playing) {
+        display_invert_row(2);
+    }
 
     drawFlag(3, 0, "Humo", state.humo);
     drawFlag(3, 11, "Sirena", state.sirena);
@@ -485,9 +499,9 @@ static void printStatus(void)
 
     const GpsData *gps = gps_data();
     if (gps->fix) {
-        printf("# gps=fix lat=%.6f lng=%.6f vel=%.1fkm/h rumbo=%.0f sat=%u hdop=%.1f movimiento=%s\r\n",
+        printf("# gps=fix lat=%.6f lng=%.6f vel=%.1fkm/h rumbo=%.0f sat=%u hdop=%.1f retenido=%.1fm movimiento=%s\r\n",
                gps->lat, gps->lng, gps->speedKmh, gps->courseDeg, (unsigned)gps->satellites, gps->hdop,
-               state.movement ? "si" : "no");
+               gps->heldOffsetM, state.movement ? "si" : "no");
     } else {
         printf("# gps=%s sat=%u en_vista=%u movimiento=%s\r\n",
                gps->receiving ? "buscando satelites" : "sin datos (revisar TX del GPS -> D2)",
@@ -502,6 +516,8 @@ static void printHelp(void)
     printf("# Ignicion: cable de D9 a GND = llave en contacto\r\n");
     printf("# GPS: TX del modulo -> D2. Para probar sin modulo: nmea $GNRMC,...*hh\r\n");
     printf("# Pantalla: contraste 0-63 (si se ve clara u oscura), girar (al reves), espejo (espejada)\r\n");
+    printf("# Audio: audio 1-%d (probar mensaje), audio catalogo, volumen 0-%d\r\n", AUDIO_MESSAGE_COUNT,
+           AUDIO_VOLUME_MAX);
 }
 
 static void handleLocalCommand(const char *line)
@@ -536,6 +552,29 @@ static void handleLocalCommand(const char *line)
         }
         display_set_contrast((uint8_t)value);
         printf("# ok: contraste %d\r\n", value);
+        return;
+    }
+    if (strcmp(name, "audio") == 0) {
+        int value;
+        if (strcmp(arg, "catalogo") == 0) {
+            audio_print_catalog();
+            return;
+        }
+        if (sscanf(arg, "%d", &value) != 1 || value < 1 || value > AUDIO_MESSAGE_COUNT) {
+            printf("# Uso: audio 1-%d (prueba un mensaje de voz)\r\n", AUDIO_MESSAGE_COUNT);
+            return;
+        }
+        audio_play((AudioMessage)value);
+        return;
+    }
+    if (strcmp(name, "volumen") == 0) {
+        int value;
+        if (sscanf(arg, "%d", &value) != 1 || value < 0 || value > AUDIO_VOLUME_MAX) {
+            printf("# Uso: volumen 0-%d (actual %u)\r\n", AUDIO_VOLUME_MAX, (unsigned)audio_volume());
+            return;
+        }
+        audio_set_volume((uint8_t)value);
+        printf("# ok: volumen %d\r\n", value);
         return;
     }
     if (strcmp(name, "girar") == 0 || strcmp(name, "espejo") == 0) {
@@ -682,6 +721,7 @@ static bool updateMovement(void)
         printf("# Vehiculo %s\r\n", moving ? "en movimiento" : "detenido");
         if (moving && state.armed) {
             sendEvent("vehicleMovedWhileArmed", "critical", "{}");
+            audio_play(AUDIO_MOVIMIENTO_NO_AUTORIZADO);
         }
         changed = true;
     }
@@ -719,12 +759,14 @@ void device_init(void)
     printHelp();
     display_init();
     gps_init();
+    audio_init();
     sendTelemetry();
 }
 
 void device_tick(uint32_t nowMs)
 {
     gps_tick(nowMs);
+    audio_tick(nowMs);
     handleButton(nowMs);
     handleIgnition(nowMs);
     if (updateMovement()) {

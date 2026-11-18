@@ -429,6 +429,30 @@ test("buildTelemetryUpdates: escribe campo por campo, nunca reemplaza el nodo di
   assert.equal(updates["device_events/GPS-X/123"].type, "heartbeat");
 });
 
+test("telemetria: sin ubicacion (GPS sin primer fix) se acepta", async () => {
+  const res = await postTelemetry("TEST-SIN-UBICACION", telemetryPayload({ location: undefined }));
+  assert.equal(res.status, 200);
+});
+
+test("telemetria: ubicacion con lat pero sin lng se rechaza con 422", async () => {
+  const res = await postTelemetry("TEST-UBICACION-INCOMPLETA", telemetryPayload({ location: { lat: -36.8 } }));
+  assert.equal(res.status, 422);
+});
+
+test("buildTelemetryUpdates: sin posicion conserva lat/lng anteriores y marca gpsFix=false", () => {
+  const telemetry = telemetryPayload({ sequence: 8, location: { gpsFix: false, satellites: 3 } });
+  const state = compatibilityDeviceState("GPS-X", telemetry);
+  const updates = buildTelemetryUpdates("GPS-X", telemetry, state, 456);
+
+  // Nada que pise la ultima posicion conocida con 0,0.
+  for (const key of ["location", "latitud", "longitud", "velocidad"]) {
+    assert.equal(updates[`dispositivos/GPS-X/${key}`], undefined, key);
+  }
+  assert.equal(updates["dispositivos/GPS-X/location/gpsFix"], false);
+  assert.equal(updates["dispositivos/GPS-X/location/satellites"], 3);
+  assert.equal(updates["dispositivos/GPS-X/location/lat"], undefined);
+});
+
 test("compatibilityDeviceState: protocoloActivo solo se escribe si la telemetria lo reporta", () => {
   const sinDato = compatibilityDeviceState("GPS-X", telemetryPayload());
   assert.equal("protocoloActivo" in sinDato, false);

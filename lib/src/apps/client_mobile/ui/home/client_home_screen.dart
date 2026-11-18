@@ -7,6 +7,7 @@ import 'package:first_protection/core/utils/distance_format.dart';
 import 'package:first_protection/core/utils/time_ago.dart';
 import 'package:first_protection/core/utils/vehicle_data.dart';
 import 'package:first_protection/core/widgets/custom_notification.dart';
+import 'package:first_protection/core/widgets/vehicle_marker.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/datos_propietario_screen.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/geocerca_screen.dart';
 import 'package:first_protection/src/apps/client_mobile/ui/historial_eventos_screen.dart';
@@ -32,14 +33,28 @@ class ClientHomeScreen extends StatefulWidget {
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   GoogleMapController? _mapController;
   final DatabaseService _databaseService = DatabaseService();
+  final VehicleMarkerIcons _markerIcons = VehicleMarkerIcons();
 
   final String _mapStyle =
       '[{"elementType":"geometry","stylers":[{"color":"#212121"}]},{"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},{"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},{"featureType":"administrative","elementType":"geometry","stylers":[{"color":"#757575"}]},{"featureType":"poi","elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},{"featureType":"road","elementType":"geometry.fill","stylers":[{"color":"#2c2c2c"}]},{"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}]';
 
   @override
+  void initState() {
+    super.initState();
+    _markerIcons.addListener(_handleMarkerIconsChanged);
+  }
+
+  @override
   void dispose() {
     _mapController?.dispose();
+    _markerIcons
+      ..removeListener(_handleMarkerIconsChanged)
+      ..dispose();
     super.dispose();
+  }
+
+  void _handleMarkerIconsChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _abrirNavegacionExterna(double lat, double lng) async {
@@ -173,11 +188,17 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                       Marker(
                         markerId: const MarkerId('vehiculo'),
                         position: posicionVehiculo,
-                        icon: BitmapDescriptor.defaultMarkerWithHue(
-                          estado.protocoloActivo
-                              ? BitmapDescriptor.hueRed
-                              : BitmapDescriptor.hueOrange,
+                        icon: _markerIcons.iconFor(
+                          VehicleMarkerStyle.from(
+                            alert: estado.protocoloActivo || estado.humoActivo,
+                            armed: estado.armado,
+                            cutOff: estado.cortaCorriente,
+                            gpsFix: estado.gpsFix,
+                            headingDegrees: estado.heading,
+                            speedKmh: estado.velocidad,
+                          ),
                         ),
+                        anchor: const Offset(0.5, 0.5),
                       ),
                       if (vCtrl.posicionUsuario != null)
                         Marker(

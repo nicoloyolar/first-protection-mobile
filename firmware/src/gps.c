@@ -1,5 +1,6 @@
 #include "gps.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -12,6 +13,14 @@
 #define FIX_TIMEOUT_MS 3000  /* sin RMC valido en este tiempo = se perdio el fix */
 #define DATA_TIMEOUT_MS 3000 /* sin bytes en este tiempo = modulo desconectado */
 #define KNOTS_TO_KMH 1.852f
+
+/* Retencion en reposo: con el vehiculo quieto el GPS "baila" varios metros
+ * (mas con pocos satelites). La posicion publicada solo se actualiza si se
+ * mueve de verdad: sobre el umbral de movimiento o mas lejos que el ruido. */
+#define HOLD_RELEASE_SPEED_KMH 5.0f
+#define HOLD_RELEASE_DISTANCE_M 15.0
+#define EARTH_RADIUS_M 6371000.0
+#define DEG_TO_RAD 0.017453292519943295
 
 static UART_HandleTypeDef huart1;
 
@@ -132,6 +141,14 @@ static bool parseCoordinate(const char *value, const char *hemisphere, double *o
     return true;
 }
 
+/* Aproximacion equirectangular: de sobra para distancias de metros. */
+static double distanceMeters(double lat1, double lng1, double lat2, double lng2)
+{
+    double x = (lng2 - lng1) * DEG_TO_RAD * cos((lat1 + lat2) * 0.5 * DEG_TO_RAD);
+    double y = (lat2 - lat1) * DEG_TO_RAD;
+    return sqrt(x * x + y * y) * EARTH_RADIUS_M;
+}
+
 /* $xxRMC,hora,estado,lat,N/S,lng,E/W,velocidad(nudos),rumbo,fecha,... */
 static void parseRmc(char **f, int n, uint32_t nowMs)
 {
@@ -142,9 +159,14 @@ static void parseRmc(char **f, int n, uint32_t nowMs)
     if (!parseCoordinate(f[3], f[4], &lat) || !parseCoordinate(f[5], f[6], &lng)) {
         return;
     }
-    data.lat = lat;
-    data.lng = lng;
     data.speedKmh = f[7][0] ? (float)atof(f[7]) * KNOTS_TO_KMH : 0.0f;
+    double offset = data.hasEverFix ? distanceMeters(data.lat, data.lng, lat, lng) : 0.0;
+    if (!data.hasEverFix || data.speedKmh >= HOLD_RELEASE_SPEED_KMH || offset > HOLD_RELEASE_DISTANCE_M) {
+        data.lat = lat;
+        data.lng = lng;
+        offset = 0.0;
+    }
+    data.heldOffsetM = (float)offset;
     if (f[8][0]) {
         data.courseDeg = (float)atof(f[8]);
     }
@@ -252,4 +274,11 @@ const GpsData *gps_data(void)
 void gps_feed_sentence(const char *s)
 {
     handleSentence(s, HAL_GetTick());
+}
+
+void gps_usart_transmit(const uint8_t *data, uint16_t len)
+{
+    /* Bloqueante pero corto (10 bytes a 9600 = ~10 ms). La recepcion del GPS
+     * sigue por su propia interrupcion, sin pasar por el HAL. */
+    HAL_UART_Transmit(&huart1, (uint8_t *)data, len, 50);
 }

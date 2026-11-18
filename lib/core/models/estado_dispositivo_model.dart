@@ -32,6 +32,13 @@ class EstadoDispositivo {
 
   bool get armado => systemMode == 'armed';
 
+  /// Estado del GPS del dispositivo (`location.gpsFix`). Sin el dato
+  /// (dispositivos antiguos con solo campos planos) se asume fix.
+  final bool gpsFix;
+
+  /// Rumbo en grados (`location.heading`); solo llega con fix.
+  final double? heading;
+
   EstadoDispositivo({
     required this.idDispositivo,
     required this.ultimaActualizacion,
@@ -51,6 +58,8 @@ class EstadoDispositivo {
     this.geofenceCenterLat,
     this.geofenceCenterLng,
     this.geofenceRadiusMeters,
+    this.gpsFix = true,
+    this.heading,
   });
 
   factory EstadoDispositivo.fromMap(
@@ -63,6 +72,9 @@ class EstadoDispositivo {
     final geofence = data['geofence'] is Map
         ? Map<dynamic, dynamic>.from(data['geofence'] as Map)
         : null;
+    final location = data['location'] is Map
+        ? Map<dynamic, dynamic>.from(data['location'] as Map)
+        : const <dynamic, dynamic>{};
 
     return EstadoDispositivo(
       idDispositivo: idDispositivo,
@@ -89,6 +101,10 @@ class EstadoDispositivo {
       geofenceRadiusMeters: geofence == null || geofence['radiusMeters'] == null
           ? null
           : _asDouble(geofence['radiusMeters']),
+      gpsFix: location['gpsFix'] != false,
+      heading: location['heading'] is num
+          ? (location['heading'] as num).toDouble()
+          : null,
     );
   }
 
@@ -112,7 +128,9 @@ class EstadoDispositivo {
         other.geofenceEnabled == geofenceEnabled &&
         other.geofenceCenterLat == geofenceCenterLat &&
         other.geofenceCenterLng == geofenceCenterLng &&
-        other.geofenceRadiusMeters == geofenceRadiusMeters;
+        other.geofenceRadiusMeters == geofenceRadiusMeters &&
+        other.gpsFix == gpsFix &&
+        other.heading == heading;
   }
 
   @override
@@ -136,6 +154,8 @@ class EstadoDispositivo {
       geofenceCenterLat,
       geofenceCenterLng,
       geofenceRadiusMeters,
+      gpsFix,
+      heading,
     ),
   );
 

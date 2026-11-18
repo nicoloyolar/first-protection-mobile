@@ -49,6 +49,17 @@ class AdminDeviceViewData {
 
   bool get isAlert => humo || protocoloActivo;
 
+  bool get isArmed => raw['systemMode'] == 'armed';
+
+  Map<dynamic, dynamic> get _location =>
+      raw['location'] is Map ? raw['location'] as Map : const {};
+
+  /// Sin el dato (dispositivos antiguos con solo campos planos) se asume fix.
+  bool get gpsFix => _location['gpsFix'] != false;
+
+  double? get heading =>
+      _location['heading'] is num ? (_location['heading'] as num).toDouble() : null;
+
   bool get isOnline => latitud != 0 && longitud != 0;
 
   LatLng get position => LatLng(latitud, longitud);

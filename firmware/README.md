@@ -19,7 +19,7 @@ Placa con el USB hacia arriba. Los nombres de cada pin están impresos en la Nuc
 | Botón oculto | — | B1 (botón azul de la placa) | Corto = alerta, 2 s = protocolo |
 | Ignición/ACC (simulada) | cable a GND | D9 | Cable conectado = llave en contacto |
 | GPS NEO-M8N | TX | D2 | USART1, 9600 baudios |
-| | RX (opcional) | D8 | |
+| | RX | sin conectar | D8 queda para el DFPlayer |
 | | VCC / GND | 5V o 3V3 / GND | Según la etiqueta del módulo |
 | LCD GM12864-03A (ST7567) | CS | D10 | SPI por software |
 | | RST | D11 | |
@@ -28,6 +28,9 @@ Placa con el USB hacia arriba. Los nombres de cada pin están impresos en la Nuc
 | | SDA | D14 | |
 | | GND / VDD | GND / 3V3 | |
 | | BA / BK | opcional | Retroiluminación: BK a GND, BA a 3V3 **con resistencia de 100–220 Ω** |
+| DFPlayer Mini (mensajes de voz) | RX | D8 | **Con resistencia de 1 kΩ en serie.** Comparte USART1 con el GPS: el GPS usa solo RX (D2) y el DFPlayer solo TX (D8), los dos a 9600 |
+| | VCC / GND | 5V / GND | |
+| | SPK1 / SPK2 | parlante 3 W (4–8 Ω) | Los audios van en la microSD como `/mp3/0001.mp3`, `/mp3/0002.mp3`… (ver `src/audio.h`) |
 
 Pines reservados:
 - **D13**: no usar, es el LED LD2 de la placa.
@@ -43,7 +46,7 @@ python -m platformio run -t upload      # compila y graba (copia el .bin a la un
 python -m platformio device monitor     # consola serial a 115200
 ```
 
-En la consola, `ayuda` lista los comandos manuales: `humo on`, `corte off`, `armar`, `estado`, `contraste 0-63`, `girar`, `espejo`, `nmea <frase>`, etc. La pantalla del banco se ve bien con los valores de fábrica (contraste 20, sin girar).
+En la consola, `ayuda` lista los comandos manuales: `humo on`, `corte off`, `armar`, `estado`, `contraste 0-63`, `girar`, `espejo`, `audio 1-7`, `volumen 0-30`, `nmea <frase>`, etc. La pantalla del banco se ve bien con los valores de fábrica (contraste 20, sin girar).
 
 ## Conectar con el sistema real
 
@@ -53,6 +56,12 @@ python ..\scripts\stm_serial_bridge.py --base-url https://us-central1-first-prot
 ```
 
 La placa aparece como `GPS-NUCLEO01`. Requiere `pyserial`. Mientras el puente corre, ocupa el puerto serie, y el monitor de PlatformIO no puede abrirlo.
+
+**Mensajes de voz sin DFPlayer:** en Windows, el puente hace de DFPlayer y reproduce cada mensaje por el parlante del PC (`scripts/pc_audio.py`). Al arrancar, le pide a la placa su catálogo (`audio catalogo`) y genera los audios por adelantado. Usa la voz latinoamericana **es-US-Chirp3-HD-Kore** de Google Cloud Text-to-Speech, con las credenciales ADC de gcloud y el proyecto `first-protection`; la voz final la define el cliente.
+- `firmware/audio/0001.wav`, `0002.wav`… son los que suenan en el PC.
+- `firmware/audio/mp3/0001.mp3`, `0002.mp3`… están **listos para copiar a la microSD** del DFPlayer (carpeta `mp3`).
+
+Los audios se regeneran solos si cambia el texto en `src/audio.c` o la voz. Otra voz: `--voice es-US-Chirp3-HD-Charon`. Voz de Windows sin internet: `--voice windows`. Sin audio: `--no-pc-audio`.
 
 ## Qué es real y qué está simulado
 

@@ -9,6 +9,7 @@ import 'package:first_protection/core/theme/app_colors.dart';
 import 'package:first_protection/core/utils/device_command_status_ui.dart';
 import 'package:first_protection/core/utils/device_event_formatter.dart';
 import 'package:first_protection/core/utils/time_ago.dart';
+import 'package:first_protection/core/widgets/vehicle_marker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,6 +26,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
   final AuthService _authService = AuthService();
   final DatabaseService _databaseService = DatabaseService();
   late final AdminDashboardController _dashboardController;
+  final VehicleMarkerIcons _markerIcons = VehicleMarkerIcons();
 
   int _activeTab = 0;
 
@@ -39,6 +41,7 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     _dashboardController = AdminDashboardController()
       ..addListener(_handleDashboardChanged)
       ..start();
+    _markerIcons.addListener(_handleMarkerIconsChanged);
   }
 
   @override
@@ -46,7 +49,14 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
     _dashboardController
       ..removeListener(_handleDashboardChanged)
       ..dispose();
+    _markerIcons
+      ..removeListener(_handleMarkerIconsChanged)
+      ..dispose();
     super.dispose();
+  }
+
+  void _handleMarkerIconsChanged() {
+    if (mounted) setState(() {});
   }
 
   void _handleDashboardChanged() {
@@ -144,12 +154,19 @@ class _AdminDashboardWebState extends State<AdminDashboardWeb> {
 
   Set<Marker> _buildMarkers(List<AdminDeviceViewData> devices) {
     return devices.where((device) => device.isOnline).map((device) {
+      final style = VehicleMarkerStyle.from(
+        alert: device.isAlert,
+        armed: device.isArmed,
+        cutOff: device.cortaCorriente,
+        gpsFix: device.gpsFix,
+        headingDegrees: device.heading,
+        speedKmh: device.velocidad,
+      );
       return Marker(
         markerId: MarkerId(device.id),
         position: device.position,
-        icon: BitmapDescriptor.defaultMarkerWithHue(
-          device.isAlert ? BitmapDescriptor.hueRed : BitmapDescriptor.hueOrange,
-        ),
+        icon: _markerIcons.iconFor(style),
+        anchor: const Offset(0.5, 0.5),
         onTap: () => _seleccionarVehiculo(device),
       );
     }).toSet();

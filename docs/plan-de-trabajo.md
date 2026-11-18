@@ -395,7 +395,45 @@ El sistema ya guarda RUT, domicilio y contacto de emergencia reales de clientes 
 
 *(pendiente)*
 
-## 11. Pendiente De Este Documento
+## 11. Propuesta — Mensajes De Voz Y Sirena (Preparada Para Llamada Con Cliente 2026-11-10)
+
+El dispositivo debe tener, además de la sirena, **mensajes de voz grabados para cada acción**. Hasta ahora la documentación solo decía "`sirena`: alerta sonora", así que esta sección propone cómo integrarlo y qué decidir con el cliente.
+
+### Hardware propuesto
+
+- **Mensajes de voz:** módulo **DFPlayer Mini** (reproductor MP3 con microSD y amplificador de 3 W integrado) más un parlante de 3 W en la cabina. Los audios van en la microSD (`/mp3/0001.mp3`, `0002.mp3`…) y el STM le pide por serial que reproduzca el número N. Bajo costo (pocos dólares) y muy usado.
+- **Sirena:** sirena de 12 V de auto, activada por relé o MOSFET. Ya existe en el sistema como `sirena`; no cambia.
+- **Quién decide qué suena:** el **propio dispositivo**, al cambiar de estado. Así funciona aunque no haya señal celular y no requiere cambios en backend ni app. Más adelante se puede sumar un comando remoto "reproducir mensaje N".
+- **Estado en banco:** integración lista en el firmware; mientras no llegue el módulo, el mensaje que sonaría se muestra en la pantalla y en el log (`firmware/src/audio.c`).
+
+### Mensajes propuestos
+
+| # | Evento | Texto propuesto | ¿Suena por defecto? |
+|---|---|---|---|
+| 1 | Se arma el sistema | "Sistema de seguridad armado." | Sí |
+| 2 | Se desarma el sistema | "Sistema de seguridad desarmado." | Sí |
+| 3 | Se activa el protocolo de emergencia | "Atención: este vehículo está bajo protocolo de seguridad First Protection. Su ubicación está siendo informada." | Sí |
+| 4 | Se desactiva el protocolo | "Protocolo de seguridad desactivado." | Sí |
+| 5 | Movimiento estando armado | "Vehículo en movimiento no autorizado. Detenga el vehículo." | Sí |
+| 6 | Se activa el corte de corriente | "Corte de energía activado." | Sí |
+| 7 | Se activa el humo | "Atención: sistema de humo disuasivo activado." | Sí |
+| 8 | Botón de pánico (pulsación corta) | — (silencioso) | **No** |
+
+### Preguntas para el cliente
+
+1. **¿La lista y los textos son los correctos?** ¿Falta algún evento (por ejemplo, salida de geocerca o pérdida de GPS) o sobra alguno?
+2. **Botón de pánico: ¿silencioso o con mensaje?** Se propone silencioso: en un portonazo con la víctima todavía cerca, un mensaje audible podría ponerla en riesgo. El aviso igual llega a la central, al dueño y al panel.
+3. **Protocolo activado con el conductor adentro:** el mensaje 3 busca disuadir, pero también puede provocar una reacción violenta. ¿Suena siempre, solo si el vehículo está detenido, o con un retardo?
+4. **¿Dónde se escucha?** ¿Solo dentro de la cabina (parlante), o también afuera?
+5. **Humo:** ¿debería permitirse solo con el vehículo detenido, como el corte de corriente? Activarlo en marcha afecta la visibilidad de quien conduce.
+6. **Voces:** ¿locución profesional, o texto a voz generado? ¿Solo en español?
+7. **Volumen:** ¿fijo, o configurable por cliente/vehículo?
+
+### Respuestas del cliente (completar después de la llamada)
+
+*(pendiente)*
+
+## 12. Pendiente De Este Documento
 
 - ~~Resolver la contradicción sobre el SIM7600 con el equipo de hardware~~ — resuelto 2026-08-12.
 - Confirmar bandas exactas del módem A7670 elegido contra el operador del piloto.

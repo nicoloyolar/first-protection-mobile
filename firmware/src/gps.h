@@ -16,8 +16,9 @@ typedef struct {
     bool receiving;  /* llegan bytes del modulo (cableado OK) */
     bool fix;        /* posicion valida reciente */
     bool hasEverFix; /* hubo fix alguna vez desde el arranque: lat/lng es la ultima conocida */
-    double lat;
+    double lat;      /* posicion publicada: retenida en reposo (ver gps.c) */
     double lng;
+    float heldOffsetM; /* distancia entre la ultima posicion cruda y la publicada (diagnostico) */
     float speedKmh;
     float courseDeg;
     uint8_t satellites;       /* usados en el fix (GGA); 0 hasta tener fix */
@@ -31,5 +32,9 @@ const GpsData *gps_data(void);
 
 /* Inyecta una frase NMEA completa ("$GNRMC,...*hh"), para probar sin el modulo. */
 void gps_feed_sentence(const char *sentence);
+
+/* Transmite por USART1 TX (D8). El GPS no la usa (solo recibimos sus frases),
+ * asi que la comparte el DFPlayer, que tambien trabaja a 9600 (ver audio.h). */
+void gps_usart_transmit(const uint8_t *data, uint16_t len);
 
 #endif
